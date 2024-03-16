@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,scss,json}\"",
-    "prepare": "husky"
+    "prepare": "cd ../ && husky ./frontend/.husky"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
