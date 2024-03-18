@@ -7,7 +7,7 @@ import type { Route } from "@/types/Route";
 
 const tabStyle = (selected: boolean) =>
   clsx(
-    `px-4 py-2 text-[16px] flex flex-row space-x-2 focus-visible:outline-none focus:outline-none transition-colors rounded decoration-none`,
+    `px-4 py-2 text-[16px] flex flex-row space-x-2 focus-visible:outline-none focus:outline-none transition-colors rounded decoration-none select-none`,
     selected
       ? `bg-cyan-50 text-tremor-content-strong hover:bg-cyan-50 hover:text-tremor-content-strong`
       : `text-white bg-transparent hover:bg-blue-900/25`,
