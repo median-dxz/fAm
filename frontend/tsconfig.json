@@ -12,6 +12,8 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
     "plugins": [
       {
         "name": "next"
