@@ -3,7 +3,7 @@
 import { Tab } from "@headlessui/react";
 import { usePathname } from "next/navigation";
 
-import { Tab as FAmTab } from "@/components/dashboard/Tab";
+import { Tab as FAmTab } from "@/components/dashboard/NavTab";
 import { DashboardRouter } from "@/routers/DashboardRouter";
 
 export function TabList() {

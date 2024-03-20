@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import { Card } from "@tremor/react";
 
+import { Main as DashBoardMain } from "@/components/dashboard/Main";
+
 export const metadata: Metadata = {
   title: "fAm | Dashboard",
 };
 
-import "@/lib/services/k8sClient";
-
-export default function DashboardMain() {
+export default async function DashboardMain() {
   return (
-    <div className="w-full h-full flex items-center justify-center min-h-[100vh]">
-      <Card className="w-fit min-w-12 text-9xl">Home Page</Card>
+    <div className="flex flex-col min-h-[100vh] items-center justify-center space-y-8">
+      <Card className="w-fit min-w-12 text-xl">fill A moment</Card>
+      <DashBoardMain />
     </div>
   );
 }
