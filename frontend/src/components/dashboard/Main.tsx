@@ -2,14 +2,25 @@
 
 import type { KubeConfig } from "@kubernetes/client-node";
 import { RiRefreshLine } from "@remixicon/react";
-import { Button, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@tremor/react";
+import {
+  Button,
+  Card,
+  List,
+  ListItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@tremor/react";
 import { useCallback, useEffect, type MouseEventHandler } from "react";
 import useSWRMutation from "swr/mutation";
 
 import { FAM_API_KEY, apiBuilder } from "@/lib/endpoint";
 
 export function Main() {
-  const { data: kc, error, trigger } = useSWRMutation(FAM_API_KEY.cluster, apiBuilder(FAM_API_KEY.cluster));
+  const { data: kc, error, isMutating, trigger } = useSWRMutation(FAM_API_KEY.cluster, apiBuilder(FAM_API_KEY.cluster));
 
   const refresh: MouseEventHandler<HTMLButtonElement> = useCallback(async () => {
     trigger({ param: { reuse: "false" } });
@@ -21,7 +32,8 @@ export function Main() {
 
   return (
     <>
-      <Button icon={RiRefreshLine} onClick={refresh} variant="secondary">
+      <Card className="w-fit min-w-12 text-xl mt-8">fill A moment</Card>
+      <Button icon={RiRefreshLine} onClick={refresh} variant="secondary" loading={isMutating} loadingText="刷新中...">
         刷新
       </Button>
       {error ? <div>{error.message}</div> : kc ? <ClusterInfo kc={kc} /> : <div>loading...</div>}
@@ -30,55 +42,56 @@ export function Main() {
 }
 
 const ClusterInfo = ({ kc }: { kc: KubeConfig }) => {
-  const { data, trigger } = useSWRMutation(FAM_API_KEY.serviceList, apiBuilder(FAM_API_KEY.serviceList));
+  const { data, isMutating, trigger } = useSWRMutation(FAM_API_KEY.serviceList, apiBuilder(FAM_API_KEY.serviceList));
   return (
-    <div className="flex flex-col items-center">
+    <>
       <h1>集群信息</h1>
-      <pre>{JSON.stringify(kc["clusters"], null, 2)}</pre>
+      {kc.clusters.map((cluster, index) => (
+        <Card className="mx-auto max-w-md" key={index}>
+          <h3 className="text-tremor-content-strong dark:text-dark-tremor-content-strong font-medium">
+            {cluster.name}
+          </h3>
+          <List className="mt-2">
+            {Object.entries(cluster).map(([key, value], index) => (
+              <ListItem key={index}>
+                <span className="font-medium">{key}</span> {JSON.stringify(value)}
+              </ListItem>
+            ))}
+          </List>
+        </Card>
+      ))}
       <Button
         onClick={async () => {
           trigger({ param: {} });
         }}
         variant="secondary"
+        loading={isMutating}
+        loadingText="测试中..."
       >
         测试连接
       </Button>
       {data && (
-        <>
-          <h1>服务信息</h1>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell className="text-right">Monsters Slayed</TableHeaderCell>
-                <TableHeaderCell>Region</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
+        <Table className="w-full">
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>服务</TableHeaderCell>
+              <TableHeaderCell>集群IP</TableHeaderCell>
+              <TableHeaderCell>端口</TableHeaderCell>
+              <TableHeaderCell>选择器</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.items.map((item, index) => (
+              <TableRow key={index}>
+                <TableCell>{item?.metadata?.name ?? "unknown"}</TableCell>
+                <TableCell>{item?.spec?.clusterIP ?? "unknown"}</TableCell>
+                <TableCell>{JSON.stringify(item?.spec?.ports)}</TableCell>
+                <TableCell>{JSON.stringify(item?.spec?.selector)}</TableCell>
               </TableRow>
-            </TableHead>
-
-            <TableBody>
-              <TableRow>
-                <TableCell>Wilhelm Tell</TableCell>
-                <TableCell className="text-right">1</TableCell>
-                <TableCell>Uri, Schwyz, Unterwalden</TableCell>
-                <TableCell>National Hero</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>The Witcher</TableCell>
-                <TableCell className="text-right">129</TableCell>
-                <TableCell>Kaedwen</TableCell>
-                <TableCell>Legend</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Mizutsune</TableCell>
-                <TableCell className="text-right">82</TableCell>
-                <TableCell>Japan</TableCell>
-                <TableCell>N/A</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </>
+            ))}
+          </TableBody>
+        </Table>
       )}
-    </div>
+    </>
   );
 };

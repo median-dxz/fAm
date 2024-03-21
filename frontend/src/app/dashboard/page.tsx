@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Card } from "@tremor/react";
 
 import { Main as DashBoardMain } from "@/components/dashboard/Main";
 
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 export default async function DashboardMain() {
   return (
     <div className="flex flex-col min-h-[100vh] items-center justify-center space-y-8">
-      <Card className="w-fit min-w-12 text-xl">fill A moment</Card>
       <DashBoardMain />
     </div>
   );
