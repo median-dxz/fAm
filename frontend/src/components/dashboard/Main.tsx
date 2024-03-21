@@ -42,7 +42,10 @@ export function Main() {
 }
 
 const ClusterInfo = ({ kc }: { kc: KubeConfig }) => {
-  const { data, isMutating, trigger } = useSWRMutation(FAM_API_KEY.serviceList, apiBuilder(FAM_API_KEY.serviceList));
+  const { data, isMutating, trigger, error } = useSWRMutation(
+    FAM_API_KEY.serviceList,
+    apiBuilder(FAM_API_KEY.serviceList),
+  );
   return (
     <>
       <h1>集群信息</h1>
@@ -70,6 +73,7 @@ const ClusterInfo = ({ kc }: { kc: KubeConfig }) => {
       >
         测试连接
       </Button>
+      {error && <div>{error.message}</div>}
       {data && (
         <Table className="w-full">
           <TableHead>

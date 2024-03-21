@@ -15,13 +15,12 @@ export function apiBuilder<API extends keyof FAM_API>(key: API) {
     const { path, method } = FAM_API_CONFIG[key];
     const url = `/api/${path}`;
     const query = new URLSearchParams(arg.param as Record<string, string>).toString();
-    const response: Promise<FAM_API[API]["response"]> = await fetch(`${url}?${query}`, { method }).then((res) => {
+
+    return fetch(`${url}?${query}`, { method }).then(async (res) => {
       if (!res.ok) {
         throw new Error(res.statusText);
       }
-      return res.json();
+      return res.json() as Promise<FAM_API[API]["response"]>;
     });
-
-    return response;
   };
 }
