@@ -1,5 +1,8 @@
 import { k8sClient, api } from "@/lib/k8sClient";
-import { NextResponse, type NextRequest } from "next/server";
+import { HttpError } from "@kubernetes/client-node";
+import { type NextRequest } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -10,8 +13,14 @@ export async function GET(request: NextRequest) {
       k8sClient.connect();
     }
     const r = await api!.listNamespacedService(namespace);
-    return NextResponse.json(r.body);
+    return Response.json(r.body);
   } catch (error) {
-    return NextResponse.json({}, { status: 500, statusText: (error as Error).message });
+    console.error(`[API]: ${request.url} ${JSON.stringify(error)}`);
+
+    if (error instanceof HttpError) {
+      return Response.json({}, { status: error.statusCode, statusText: error.body?.message });
+    } else {
+      return Response.json({}, { status: 500, statusText: (error as Error).message });
+    }
   }
 }
