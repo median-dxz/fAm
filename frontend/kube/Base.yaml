@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fam-ns
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fam-service-account
+  namespace: fam-ns
