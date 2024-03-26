@@ -1,19 +1,11 @@
-import { type NextRequest } from "next/server";
+export async function GET() {
+  const env = {
+    is_dev: process.env.NODE_ENV === "development",
+    is_prod: process.env.NODE_ENV !== "development",
+    in_cluster:
+      Boolean(process.env["KUBERNETES_SERVICE_HOST"]) && Boolean(process.env["KUBERNETES_SERVICE_PORT_HTTPS"]),
+    promtheus_url: process.env["PROMETHEUS_URL"],
+  };
 
-import * as config from "@/lib/config";
-
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const envList = searchParams.get("name")?.split(",");
-
-  try {
-    if (!envList) {
-      return Response.json([config.IN_CLUSTER, config.NODE_ENV]);
-    }
-    return Response.json(envList.map((k) => config[k]));
-  } catch (error) {
-    console.error(`[API]: Error on ${request.url}`);
-    console.error(error);
-    return Response.json({}, { status: 500, statusText: (error as Error).message });
-  }
+  return Response.json(env);
 }
