@@ -7,7 +7,7 @@ export type FAM_API = {
         reuse?: string;
       };
     };
-    response: k8s.KubeConfig;
+    response: k8s.Cluster;
   };
   "fam:api/service/list": {
     args: {

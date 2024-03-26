@@ -15,7 +15,12 @@ export async function GET(request: NextRequest) {
     const r = await api!.listNamespacedService(namespace);
     return Response.json(r.body);
   } catch (error) {
-    console.error(`[API]: ${request.url} ${JSON.stringify(error)}`);
+    console.error(`[API]: Error on ${request.url}`);
+    if (error instanceof HttpError) {
+      console.error(JSON.stringify(error));
+    } else {
+      console.error(error);
+    }
 
     if (error instanceof HttpError) {
       return Response.json({}, { status: error.statusCode, statusText: error.body?.message });
