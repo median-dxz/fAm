@@ -1,62 +1,83 @@
 "use client";
 
-import type { Cluster } from "@kubernetes/client-node";
-import { RiRefreshLine, RiGitForkLine, RiBox1Line, RiIdCardLine } from "@remixicon/react";
-import { Button, Card, Badge } from "@tremor/react";
+import { RiRefreshLine, RiGitForkLine, RiBox1Line, RiGlobalLine, RiServerLine } from "@remixicon/react";
+import { Button, Badge, Legend } from "@tremor/react";
 import { useCallback, useEffect, type MouseEventHandler } from "react";
 import useSWRMutation from "swr/mutation";
 
-import { FAM_API_KEY, mutationApiBuilder, queryApiBuilder } from "@/lib/endpoint";
+import { mutationApiBuilder, queryApiBuilder } from "@/lib/endpoints";
 import useSWR from "swr";
 
-const getCluster = mutationApiBuilder(FAM_API_KEY.cluster);
-const listServices = mutationApiBuilder(FAM_API_KEY.serviceList);
-const getApplicationEnvironment = queryApiBuilder(FAM_API_KEY.env);
+const getCluster = mutationApiBuilder("fam:cluster");
+const getApplicationStatus = queryApiBuilder("fam:server/status");
 
 export function Main() {
-  const { data: kc, error, isMutating, trigger } = useSWRMutation(FAM_API_KEY.cluster, getCluster);
+  const { error, isMutating, trigger } = useSWRMutation("fam:cluster", getCluster);
+  const { data: status, mutate } = useSWR("fam:server/status", getApplicationStatus);
 
   const refresh: MouseEventHandler<HTMLButtonElement> = useCallback(async () => {
-    trigger({ param: { reuse: "false" } });
-  }, [trigger]);
+    trigger({});
+    mutate();
+  }, [trigger, mutate]);
 
   useEffect(() => {
     trigger({ param: { reuse: "true" } });
   }, [trigger]);
 
   return (
-    <>
-      <Card className="w-fit min-w-12 text-xl mt-8">fill A moment</Card>
-      <Button icon={RiRefreshLine} onClick={refresh} variant="secondary" loading={isMutating} loadingText="刷新中...">
-        刷新
-      </Button>
-      {error ? <div>{error.message}</div> : kc ? <AppInfo cluster={kc} /> : <div>loading...</div>}
-    </>
+    <div className="flex flex-col w-[80%] justify-center items-center space-y-2">
+      <div className="text-7xl font-bold bg-clip-text bg-gradient-to-br from-indigo-300 to-indigo-500 text-transparent">
+        fill A moment
+      </div>
+      <span className="py-4">
+        <Button icon={RiRefreshLine} onClick={refresh} variant="secondary" loading={isMutating} loadingText="刷新中...">
+          刷新
+        </Button>
+      </span>
+      {error ? (
+        <div>{error.message}</div>
+      ) : status ? (
+        <AppInfo {...status} />
+      ) : (
+        <Button loading={true} loadingText="拉取数据中..." variant="secondary" />
+      )}
+    </div>
   );
 }
 
-const AppInfo = ({ cluster }: { cluster: Cluster }) => {
-  const { data: env } = useSWR(FAM_API_KEY.env, getApplicationEnvironment);
-
-  if (!env) {
-    return <Button loading={true} loadingText="拉取数据中..." variant="secondary" />;
-  }
-
-  const { inCluster, isProd } = env;
-
+const AppInfo = ({
+  cluster,
+  inCluster,
+  isProd,
+  clusterConnected,
+  prometheusConnected,
+  prometheusUrl,
+}: Awaited<ReturnType<typeof getApplicationStatus>>) => {
   return (
-    <div className="flex flex-row space-x-2 flex-wrap">
-      <Badge icon={isProd ? RiBox1Line : RiGitForkLine} color={isProd ? "indigo" : "amber"}>
-        env: {isProd ? "production" : "development"}
-      </Badge>
-      <Badge icon={inCluster ? RiBox1Line : RiGitForkLine} color={inCluster ? "indigo" : "amber"}>
-        in cluster: {inCluster ? "true" : "false"}
-      </Badge>
-      {cluster && (
-        <Badge icon={RiIdCardLine} color={"indigo"}>
-          cluster: {cluster.name} - {cluster.server}
+    <>
+      <div className="flex flex-row flex-wrap w-[80%] justify-center *:m-2">
+        <Badge icon={isProd ? RiBox1Line : RiGitForkLine} color={isProd ? "indigo" : "amber"}>
+          env: {isProd ? "production" : "development"}
         </Badge>
-      )}
-    </div>
+        <Badge icon={inCluster ? RiBox1Line : RiGitForkLine} color={inCluster ? "indigo" : "amber"}>
+          in cluster: {inCluster ? "true" : "false"}
+        </Badge>
+        <Badge icon={RiGlobalLine} color={cluster ? "indigo" : "red"}>
+          cluster: {cluster ? `${cluster.name} - ${cluster.server}` : "unknown"}
+        </Badge>
+        <Badge icon={RiGlobalLine} color={prometheusUrl ? "indigo" : "red"}>
+          prometheusUrl: {prometheusUrl ? prometheusUrl : "未配置"}
+        </Badge>
+      </div>
+      <div className="flex flex-row flex-wrap w-[80%] justify-center">
+        <Legend
+          colors={[clusterConnected ? "indigo" : "red", prometheusConnected ? "indigo" : "red"]}
+          categories={[
+            `cluster: ${clusterConnected ? "已连接" : "未连接"}`,
+            `prometheus: ${prometheusConnected ? "已连接" : "未连接"}`,
+          ]}
+        />
+      </div>
+    </>
   );
 };

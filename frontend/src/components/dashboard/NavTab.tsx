@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Tab as HTab } from "@headlessui/react";
 import { Fragment } from "react";
 
-import type { Route } from "@/types/Route";
+import type { Route } from "@/routers/types";
 
 const tabStyle = (selected: boolean) =>
   clsx(

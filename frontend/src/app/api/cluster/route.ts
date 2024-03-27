@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const reuse = searchParams.get("reuse") === "true";
+  const reuse = searchParams.has("reuse");
   try {
     if (!api || !reuse) {
       k8sClient.connect();
     }
-    return Response.json(kc?.getCurrentCluster());
+    const res = kc?.getCurrentCluster();
+    return Response.json({ name: String(res?.name), server: String(res?.server) });
   } catch (error) {
     console.error(`[API]: Error on ${request.url}`);
     if (error instanceof HttpError) {

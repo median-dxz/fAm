@@ -1,4 +1,4 @@
-import type { Route } from "@/types/Route";
+import type { Route } from "@/routers/types";
 import { RiHomeLine, RiNodeTree, RiTimerLine, RiSettingsLine } from "@remixicon/react";
 
 export const DashboardRouter: Route[] = [
