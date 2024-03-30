@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fam-backend-service-config
+  namespace: fam-ns
+data:
+  PROMETHEUS_URL: "http://prometheus.istio-system:9090"
+  DATABASE_PROVIDER: sqlite
+  DATABASE_URL: "/config/fam.db"

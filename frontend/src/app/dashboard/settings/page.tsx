@@ -4,6 +4,6 @@ export const metadata: Metadata = {
   title: "fAm | Dashboard - 设置",
 };
 
-export default function DashboardSettings() {
+export default async function DashboardSettings() {
   return <div>settings</div>;
 }

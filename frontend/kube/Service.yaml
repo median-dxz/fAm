@@ -1,3 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fam-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 128Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +26,10 @@ spec:
     spec:
       serviceAccountName: fam-service-account
       restartPolicy: Always
+      volumes:
+        - name: fam-pv-storage
+          persistentVolumeClaim:
+            claimName: fam-pv-claim
       containers:
         - name: fam-instance
           image: docker.io/mediandxz/fam:latest
@@ -25,12 +40,12 @@ spec:
           ports:
             - containerPort: 3000
           imagePullPolicy: Always
-          # env:
-          #   - name: KUBERNETES_NAMESPACE
-          #     valueFrom:
-          #       fieldRef:
-          #         apiVersion: v1
-          #         fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                name: fam-backend-service-config
+          volumeMounts:
+            - name: fam-pv-storage
+              mountPath: /var/lib/fam
           securityContext:
             allowPrivilegeEscalation: false
             privileged: false

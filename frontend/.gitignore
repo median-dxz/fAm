@@ -34,3 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# since this project is only targeted for development purposes currently
+/prisma/*
+!/prisma/schema.prisma
