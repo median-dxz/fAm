@@ -5,15 +5,15 @@ import { Button, Badge, Legend } from "@tremor/react";
 import { useCallback, useEffect, type MouseEventHandler } from "react";
 import useSWRMutation from "swr/mutation";
 
-import { mutationApiBuilder, queryApiBuilder } from "@/lib/endpoints";
+import { mutationSWRApiBuilder, querySWRApiBuilder } from "@/lib/endpoints";
 import useSWR from "swr";
 
-const getCluster = mutationApiBuilder("fam:cluster");
-const getApplicationStatus = queryApiBuilder("fam:server/status");
+const getCluster = mutationSWRApiBuilder("get:cluster");
+const getApplicationStatus = querySWRApiBuilder("get:server/status");
 
 export function Main() {
-  const { error, isMutating, trigger } = useSWRMutation("fam:cluster", getCluster);
-  const { data: status, mutate } = useSWR("fam:server/status", getApplicationStatus);
+  const { error, isMutating, trigger } = useSWRMutation("get:cluster", getCluster);
+  const { data: status, mutate } = useSWR("get:server/status", getApplicationStatus);
 
   const refresh: MouseEventHandler<HTMLButtonElement> = useCallback(async () => {
     trigger({});
@@ -25,7 +25,7 @@ export function Main() {
   }, [trigger]);
 
   return (
-    <div className="flex flex-col w-[80%] justify-center items-center space-y-2">
+    <div className="flex flex-col w-[80%] mx-auto min-h-[100vh] justify-center items-center space-y-2">
       <div className="text-7xl font-bold bg-clip-text bg-gradient-to-br from-indigo-300 to-indigo-500 text-transparent">
         fill A moment
       </div>
