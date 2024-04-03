@@ -3,7 +3,9 @@ Dockerfile
 node_modules
 .next
 
+.env.local
+
 .vscode
 .husky
 
-/prisma/dev.*
+/prisma/dev.*=

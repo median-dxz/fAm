@@ -1,5 +1,7 @@
 # https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
 FROM node:lts-bookworm-slim AS base
+RUN apt-get update -y && apt-get install -y openssl
+RUN corepack enable pnpm
 
 # 1. Install dependencies only when needed
 FROM base AS deps
@@ -8,15 +10,11 @@ WORKDIR /app
 # Install dependencies based on the preferred package manager
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN pnpm i
 
 # 2. Rebuild the source code only when needed
 FROM base AS builder
+
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -27,13 +25,11 @@ COPY . .
 
 # ENV NEXT_TELEMETRY_DISABLED 1
 # COPY .env.development.sample .env
+ENV DATABASE_URL=file:/var/lib/fam/fam.db
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN pnpm run prisma:generate
+RUN pnpm run prisma:migrate
+RUN pnpm run build
 
 # 3. Production image, copy all the files and run next
 FROM base AS runner
@@ -50,6 +46,8 @@ COPY --from=builder /app/public ./public
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+COPY --from=builder /var/lib/fam/fam.db /var/lib/fam/fam.db
 
 USER nextjs
 

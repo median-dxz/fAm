@@ -6,4 +6,4 @@ metadata:
 data:
   PROMETHEUS_URL: "http://prometheus.istio-system:9090"
   DATABASE_PROVIDER: sqlite
-  DATABASE_URL: "/config/fam.db"
+  DATABASE_URL: "file:/var/lib/fam/fam.db"

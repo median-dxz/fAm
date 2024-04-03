@@ -2,6 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: fam-pv-claim
+  namespace: fam-ns
 spec:
   accessModes:
     - ReadWriteOnce

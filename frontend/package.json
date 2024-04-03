@@ -9,7 +9,8 @@
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,scss,json}\"",
     "prepare": "cd ../ && husky ./frontend/.husky",
-    "prisma:migrate": "dotenv -e .env.local -- prisma migrate dev"
+    "prisma:migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
