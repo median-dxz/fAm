@@ -16,8 +16,8 @@ const convertSlug = (slug: string) => {
 
 export async function GET(request: Request, { params: { item } }: { params: { item: string } }) {
   const itemName = convertSlug(item) as keyof Setting;
-  const settingItme = await settingManager.getItme(itemName);
-  return Response.json({ settingItme });
+  const settingItem = await settingManager.getItme(itemName);
+  return Response.json({ ...settingItem });
 }
 
 export async function PUT(request: Request, { params: { item } }: { params: { item: string } }) {

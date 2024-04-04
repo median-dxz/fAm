@@ -28,7 +28,6 @@ COPY . .
 ENV DATABASE_URL=file:/var/lib/fam/fam.db
 
 RUN pnpm run prisma:generate
-RUN pnpm run prisma:migrate
 RUN pnpm run build
 
 # 3. Production image, copy all the files and run next
@@ -46,8 +45,6 @@ COPY --from=builder /app/public ./public
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-COPY --from=builder /var/lib/fam/fam.db /var/lib/fam/fam.db
 
 USER nextjs
 
