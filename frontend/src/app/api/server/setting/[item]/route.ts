@@ -22,7 +22,7 @@ export async function GET(request: Request, { params: { item } }: { params: { it
 
 export async function PUT(request: Request, { params: { item } }: { params: { item: string } }) {
   const itemName = convertSlug(item) as keyof Setting;
-  await settingManager.updateItme(itemName as keyof Setting, await request.json());
+  const r = await settingManager.updateItme(itemName as keyof Setting, await request.json());
   revalidatePath("/dashboard/settings");
   return Response.json({ message: `update ${itemName} successfully`, success: true });
 }

@@ -40,6 +40,10 @@ function StrategyServiceSettings({ setting, onMutate }: StrategyServiceSettingsP
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatus, setDialogStatus] = useState({ title: "", message: "", success: false });
 
+  if (strategyService == undefined && setting != undefined) {
+    setStrategyService(setting);
+  }
+
   return (
     <Card className="flex flex-col space-y-4">
       <p className="text-tremor-title font-bold text-tremor-content-strong">Strategy Settings</p>
