@@ -75,6 +75,7 @@ export async function PUT(request: Request) {
   try {
     const promises = data.map(async (service) => {
       try {
+        // TODO if different apply service stratgy -> apply hpa
         const r = await prisma.serviceConfig.update({
           where: {
             name_namespace: {

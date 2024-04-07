@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Dialog, DialogPanel, Divider, TextInput } from "@tremor/react";
+import { Button, Card, Dialog, DialogPanel, Divider, TextInput, Textarea } from "@tremor/react";
 import { useState } from "react";
 import { RiLoaderLine, RiGlobalLine, RiErrorWarningLine } from "@remixicon/react";
 
@@ -13,17 +13,26 @@ import clsx from "clsx";
 
 const updateStratyegyService = mutationApiBuilder("put:server/setting/strategy-service");
 const getStratyegyService = querySWRApiBuilder("get:server/setting/strategy-service");
+const getServerStatus = querySWRApiBuilder("get:server/status");
 
 export function Main() {
   const { data: strategyService, mutate: mutateStrategyService } = useSWR(
     "get:server/setting/strategy-service",
     getStratyegyService,
   );
+
+  const { data: serverStatus } = useSWR("get:server/status", getServerStatus);
+
   return (
     <div className="flex flex-col min-h-[100vh] w-[80%] mx-auto justify-center items-start space-y-6">
       <StrategyServiceSettings
         setting={strategyService}
         onMutate={debounce(mutateStrategyService, 1000) as KeyedMutator<StrategyService>}
+      />
+      <PrometheusSettings
+        setting={
+          serverStatus ? { connected: serverStatus.prometheusConnected, url: serverStatus.prometheusUrl } : undefined
+        }
       />
     </div>
   );
@@ -115,6 +124,72 @@ function StrategyServiceSettings({ setting, onMutate }: StrategyServiceSettingsP
           </Button>
         </DialogPanel>
       </Dialog>
+    </Card>
+  );
+}
+
+interface PrometheusSettingsProps {
+  setting?: { connected: boolean; url?: string };
+}
+
+function PrometheusSettings({ setting }: PrometheusSettingsProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogStatus, setDialogStatus] = useState({ message: "" });
+  const [pql, setPql] = useState("");
+  return (
+    <Card className="flex flex-col space-y-4">
+      <p className="text-tremor-title font-bold text-tremor-content-strong">Prometheus Settings</p>
+      <Divider />
+      {setting ? (
+        <>
+          <label className="flex flex-col space-y-2">
+            <span className="text-tremor-default font-bold text-tremor-content-emphasis">Prometheus URL: </span>
+            <TextInput
+              disabled
+              value={setting.url ?? ""}
+              type="url"
+              icon={setting.connected ? RiGlobalLine : RiErrorWarningLine}
+            />
+          </label>
+
+          <div className="flex flex-row space-x-2">
+            <label className="flex flex-row space-x-2 items-center w-full">
+              <span className="text-tremor-default whitespace-nowrap">PQL Test: </span>
+              <TextInput value={pql} onValueChange={setPql} />
+            </label>
+            <Button
+              onClick={async () => {
+                try {
+                  const res = await fetch(setting.url + "/api/v1/query?query=" + pql);
+                  const data = await res.json();
+                  setDialogStatus({ message: JSON.stringify(data, undefined, 4) });
+                } catch (error) {
+                  setDialogStatus({ message: (error as Error).message });
+                } finally {
+                  setDialogOpen(true);
+                }
+              }}
+            >
+              测试
+            </Button>
+            <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} static={true} className="z-[100]">
+              <DialogPanel>
+                <Textarea
+                  className="text-tremor-content-emphasis p-4 overflow-clip"
+                  value={dialogStatus.message}
+                  autoHeight
+                  disabled
+                />
+                <Button variant="light" className="mx-auto flex items-center mt-4" onClick={() => setDialogOpen(false)}>
+                  关闭
+                </Button>
+              </DialogPanel>
+            </Dialog>
+          </div>
+        </>
+      ) : (
+        <Loading />
+      )}
     </Card>
   );
 }
