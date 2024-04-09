@@ -160,7 +160,7 @@ function PrometheusSettings({ setting }: PrometheusSettingsProps) {
             <Button
               onClick={async () => {
                 try {
-                  const res = await fetch(setting.url + "/api/v1/query?query=" + pql);
+                  const res = await fetch("/api/prometheus/query?query=" + pql);
                   const data = await res.json();
                   setDialogStatus({ message: JSON.stringify(data, undefined, 4) });
                 } catch (error) {

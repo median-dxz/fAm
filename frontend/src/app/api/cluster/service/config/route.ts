@@ -59,16 +59,21 @@ export async function POST(request: Request) {
       });
     }
 
-    const allHpa = (await api!.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
-    // filter(hpa=>hpa.metadata?.labels["fam-mange"]);
+    const allHpa = (await api!.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items.filter(
+      (hpa) => hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-auto-configured",
+    );
 
     let res1: ServiceConfig[] = res.map((service) => {
-      // const hpa = allHpa.find(hpa=>hpa.metadata.)
+      const hpa = allHpa.find(
+        (hpa) =>
+          hpa.metadata?.labels?.["app.kubernetes.io/instance"] === service.name &&
+          hpa.metadata?.namespace === service.namespace,
+      );
       return {
         name: service.name,
         namespace: service.namespace,
         responseTime: service.responseTime,
-        hpaEnabled: false,
+        hpaEnabled: Boolean(hpa),
         hpaStatus: {
           currentReplicas: 1,
           targetReplicas: 1,
