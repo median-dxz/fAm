@@ -1,16 +1,20 @@
+export enum NodeType {
+  Service = "service",
+  Workload = "workload",
+}
+
 export interface Node {
-  service: Service;
+  hash: string;
+  type: NodeType;
+  name: string;
+  namespace: string;
   edges: Edge[];
 }
 
-export interface Service {
-  name: string;
-  namespace: string;
-}
-
 export interface Edge {
-  source: Node;
-  target: Node;
+  source: string;
+  target: string;
+  code: string[];
 }
 
 export interface Graph {

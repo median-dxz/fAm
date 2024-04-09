@@ -1,7 +1,12 @@
 import * as k8s from "@kubernetes/client-node";
 
 export let kc: k8s.KubeConfig | null = null;
-export let api: k8s.CoreV1Api | null = null;
+export let api: {
+  kubernetesObject: k8s.KubernetesObjectApi;
+  apps: k8s.AppsV1Api;
+  core: k8s.CoreV1Api;
+  autoscaling: k8s.AutoscalingV2Api;
+} | null = null;
 
 export const k8sClient = {
   connect() {
@@ -12,6 +17,11 @@ export const k8sClient = {
     if (JSON.stringify(kc.clusters[0]) === `{"name":"cluster","server":"http://localhost:8080"}`) {
       throw new Error("KubeConfig not found.");
     }
-    api = kc.makeApiClient(k8s.CoreV1Api);
+    api = {
+      kubernetesObject: k8s.KubernetesObjectApi.makeApiClient(kc),
+      apps: kc.makeApiClient(k8s.AppsV1Api),
+      core: kc.makeApiClient(k8s.CoreV1Api),
+      autoscaling: kc.makeApiClient(k8s.AutoscalingV2Api),
+    };
   },
 };

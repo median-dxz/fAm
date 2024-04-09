@@ -14,7 +14,7 @@ export async function GET() {
   let clusterConnected = Boolean(api);
   if (clusterConnected) {
     try {
-      const r = await api?.listPodForAllNamespaces();
+      const r = await api?.core.listNamespace();
       clusterConnected = false;
       if (r?.response?.statusCode === 200) {
         clusterConnected = true;
@@ -28,9 +28,6 @@ export async function GET() {
   const inCluster =
     Boolean(process.env["KUBERNETES_SERVICE_HOST"]) && Boolean(process.env["KUBERNETES_SERVICE_PORT_HTTPS"]);
   let prometheusUrl = process.env["PROMETHEUS_URL"];
-  if (inCluster && clusterConnected) {
-    // TODO: get prometheus url from cluster ConfigMap
-  }
 
   // TODO: test prometheus connection
   let prometheusConnected = Boolean(prometheusUrl);

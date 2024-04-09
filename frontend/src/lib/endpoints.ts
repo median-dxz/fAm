@@ -1,6 +1,7 @@
 import * as k8s from "@kubernetes/client-node";
 import type { StrategyService } from "./setting";
 import type { ServiceConfig } from "@prisma/client";
+import type { Graph } from "./graph/type";
 
 export type FAM_API = {
   "get:cluster": {
@@ -52,6 +53,7 @@ export type FAM_API = {
     args: { param?: undefined; body: ServiceConfig[] };
     response: ServiceConfig[] | null;
   };
+  "get:server/graph": { args: { param?: undefined; body?: undefined }; response: Graph };
 };
 
 export const FAM_API_CONFIG = {
@@ -62,6 +64,7 @@ export const FAM_API_CONFIG = {
   "get:server/setting/strategy-service": { path: "server/setting/strategy-service", method: "GET" },
   "post:cluster/service/config": { path: "cluster/service/config", method: "POST" },
   "put:cluster/service/config": { path: "cluster/service/config", method: "PUT" },
+  "get:server/graph": { path: "server/graph", method: "GET" },
 } as const;
 
 export function mutationSWRApiBuilder<API extends keyof typeof FAM_API_CONFIG>(key: API) {

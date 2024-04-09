@@ -1,7 +1,7 @@
 import { k8sClient, api } from "@/lib/k8sClient";
 import { prisma } from "@/lib/prismaClient";
 import { HttpError } from "@kubernetes/client-node";
-import type { ServiceConfig } from "@prisma/client";
+import type { ServiceConfig } from "@/lib/controller/type";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (!api) {
       k8sClient.connect();
     }
-    let r = await api?.listServiceForAllNamespaces();
+    let r = await api?.core.listServiceForAllNamespaces();
     if (!r) {
       throw new Error("Failed to fetch services");
     }
@@ -24,7 +24,12 @@ export async function POST(request: Request) {
       };
     });
 
-    const promises = services.map(async (service) => {
+    let req: { name: string; namespace: string }[] | undefined;
+    try {
+      req = await request.json();
+    } catch (error) {}
+
+    let promises = services.map(async (service) => {
       try {
         const r = await prisma.serviceConfig.findUniqueOrThrow({
           where: {
@@ -46,19 +51,32 @@ export async function POST(request: Request) {
         return r;
       }
     });
-    let req: ServiceConfig[] | undefined;
-    try {
-      req = await request.json();
-    } catch (error) {}
+
+    let res = await Promise.all(promises);
     if (req) {
-      return Response.json(
-        (await Promise.all(promises)).filter((service) => {
-          return req.some((r) => r.name === service.name && r.namespace === service.namespace);
-        }),
-      );
-    } else {
-      return Response.json(await Promise.all(promises));
+      res = res.filter((service) => {
+        return req.some((r) => r.name === service.name && r.namespace === service.namespace);
+      });
     }
+
+    // const allHpa = (await api!.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
+
+    let res1: ServiceConfig[] = res.map((service) => {
+      return {
+        name: service.name,
+        namespace: service.namespace,
+        responseTime: service.responseTime,
+        hpaEnabled: false,
+        hpaStatus: {
+          currentReplicas: 1,
+          targetReplicas: 1,
+          currentUtilizationPercentage: 1,
+          targetUtilizationPercentage: 1,
+        },
+      };
+    });
+
+    return Response.json(res1);
   } catch (error) {
     console.error(`[API]: Error on ${request.url}`);
     if (error instanceof HttpError) {

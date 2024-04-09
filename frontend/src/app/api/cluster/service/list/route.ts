@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!api) {
       k8sClient.connect();
     }
-    const r = await api!.listNamespacedService(namespace);
+    const r = await api!.core.listNamespace(namespace);
     return Response.json(r.body);
   } catch (error) {
     console.error(`[API]: Error on ${request.url}`);
