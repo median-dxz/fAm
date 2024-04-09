@@ -48,6 +48,8 @@ export async function GET() {
     prometheusUrl,
     clusterConnected,
     prometheusConnected,
+    clusterConnectError: null,
+    prometheusConnectError: null,
   };
   return Response.json(status);
 }

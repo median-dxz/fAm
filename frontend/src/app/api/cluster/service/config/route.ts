@@ -59,9 +59,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // const allHpa = (await api!.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
+    const allHpa = (await api!.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
+    // filter(hpa=>hpa.metadata?.labels["fam-mange"]);
 
     let res1: ServiceConfig[] = res.map((service) => {
+      // const hpa = allHpa.find(hpa=>hpa.metadata.)
       return {
         name: service.name,
         namespace: service.namespace,
