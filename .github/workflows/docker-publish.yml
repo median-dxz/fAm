@@ -33,6 +33,8 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./app
+          context: "{{defaultContext}}:app"
           push: true
           tags: mediandxz/fam:latest
+          cache-from: type=registry,ref=mediandxz/fam:latest
+          cache-to: type=inline
