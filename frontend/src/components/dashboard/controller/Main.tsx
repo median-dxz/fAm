@@ -2,8 +2,8 @@
 
 import { Loading } from "@/components/common/Loading";
 import { mutationApiBuilder, querySWRApiBuilder } from "@/lib/endpoints";
-import type { ServiceConfig } from "@prisma/client";
-import { Button, Card, Divider, NumberInput, TextInput } from "@tremor/react";
+import type { ServiceConfig } from "@/lib/controller/type";
+import { Button, Card, Divider, Legend, NumberInput, Switch } from "@tremor/react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -111,6 +111,19 @@ function ConfigCard({ config, onChange }: ConfigCardProps) {
     <Card className="flex flex-col space-y-4 w-fit">
       <p className="text-tremor-title font-bold text-tremor-content-strong">{config.name}</p>
       <Divider />
+      <span>HPA Status: {config.hpaStatus}</span>
+      {config.hpaRunningStatus && (
+        <>
+          <span>
+            Replicas: {config.hpaRunningStatus?.currentReplicas} / {config.hpaRunningStatus?.targetReplicas}
+          </span>
+          <span>
+            Utilization: {config.hpaRunningStatus?.currentUtilizationPercentage}% /{" "}
+            {config.hpaRunningStatus?.targetUtilizationPercentage}%
+          </span>
+        </>
+      )}
+
       <div className="flex flex-row items-center space-x-2">
         <span className="whitespace-nowrap">Response Time: </span>
         <NumberInput
@@ -119,7 +132,9 @@ function ConfigCard({ config, onChange }: ConfigCardProps) {
           value={config.responseTime === -1 ? "" : config.responseTime}
           min={1}
           onValueChange={(newValue) => {
-            onChange({ responseTime: newValue == null || isNaN(newValue) ? -1 : newValue });
+            onChange({
+              responseTime: newValue == null || isNaN(newValue) ? -1 : newValue,
+            });
           }}
         />
         <span className="text-tremor-content">ms</span>

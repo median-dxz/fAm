@@ -1,6 +1,7 @@
 import * as k8s from "@kubernetes/client-node";
 import type { StrategyService } from "./setting";
-import type { ServiceConfig } from "@prisma/client";
+import type { ServiceConfig } from "@/lib/controller/type";
+import type { ServiceConfig as UserServiceConfig } from "@prisma/client";
 import type { Graph } from "./graph/type";
 
 export type FAM_API = {
@@ -50,7 +51,7 @@ export type FAM_API = {
     response: ServiceConfig[];
   };
   "put:cluster/service/config": {
-    args: { param?: undefined; body: ServiceConfig[] };
+    args: { param?: undefined; body: UserServiceConfig[] };
     response: ServiceConfig[] | null;
   };
   "get:server/graph": { args: { param?: undefined; body?: undefined }; response: Graph };

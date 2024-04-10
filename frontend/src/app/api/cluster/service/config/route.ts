@@ -1,9 +1,25 @@
 import { k8sClient, api } from "@/lib/k8sClient";
 import { prisma } from "@/lib/prismaClient";
-import { HttpError } from "@kubernetes/client-node";
+import { HttpError, V2HorizontalPodAutoscaler } from "@kubernetes/client-node";
 import type { ServiceConfig } from "@/lib/controller/type";
 
 export const dynamic = "force-dynamic";
+
+interface HpaStatus {
+  currentReplicas: number;
+  targetReplicas: number;
+  currentUtilizationPercentage: number;
+  targetUtilizationPercentage: number;
+}
+
+function getHpaRunningStatus(hpa: V2HorizontalPodAutoscaler): HpaStatus {
+  return {
+    currentReplicas: hpa.status!.currentReplicas || NaN,
+    targetReplicas: hpa.status!.desiredReplicas,
+    currentUtilizationPercentage: hpa.status!.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
+    targetUtilizationPercentage: hpa.spec!.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -66,20 +82,21 @@ export async function POST(request: Request) {
     let res1: ServiceConfig[] = res.map((service) => {
       const hpa = allHpa.find(
         (hpa) =>
-          hpa.metadata?.labels?.["app.kubernetes.io/instance"] === service.name &&
-          hpa.metadata?.namespace === service.namespace,
+          hpa.metadata?.namespace === service.namespace &&
+          hpa.metadata?.name === `fam-hpa-${service.name}` &&
+          hpa.spec?.scaleTargetRef?.name === service.name &&
+          hpa.metadata.annotations?.["app.kubernetes.io/instance"] === service.name,
       );
+      let hpaStatus: ServiceConfig["hpaStatus"] = "not-created";
+      if (hpa) {
+        hpaStatus = "configured";
+      }
       return {
         name: service.name,
         namespace: service.namespace,
         responseTime: service.responseTime,
-        hpaEnabled: Boolean(hpa),
-        hpaStatus: {
-          currentReplicas: 1,
-          targetReplicas: 1,
-          currentUtilizationPercentage: 1,
-          targetUtilizationPercentage: 1,
-        },
+        hpaStatus,
+        hpaRunningStatus: hpa ? getHpaRunningStatus(hpa) : undefined,
       };
     });
 
@@ -100,7 +117,55 @@ export async function PUT(request: Request) {
   try {
     const promises = data.map(async (service) => {
       try {
-        // TODO if different apply service stratgy -> apply hpa
+        const hpaEnabled = Boolean(service.responseTime !== -1);
+        try {
+          await api!.autoscaling.readNamespacedHorizontalPodAutoscaler(`fam-hpa-${service.name}`, service.namespace);
+          if (!hpaEnabled) {
+            console.log(`delete hpa for: ${service.name} ${service.namespace}`);
+            await api!.autoscaling.deleteNamespacedHorizontalPodAutoscaler(
+              `fam-hpa-${service.name}`,
+              service.namespace,
+            );
+          }
+        } catch (error) {
+          if (error instanceof HttpError && error.response.statusCode === 404) {
+            if (hpaEnabled) {
+              console.log(`create hpa for: ${service.name} ${service.namespace}`);
+              await api!.autoscaling.createNamespacedHorizontalPodAutoscaler(service.namespace, {
+                metadata: {
+                  name: `fam-hpa-${service.name}`,
+                  labels: {
+                    "app.kubernetes.io/managed-by": "fam-auto-configured",
+                    "app.kubernetes.io/instance": service.name,
+                  },
+                },
+                spec: {
+                  scaleTargetRef: {
+                    apiVersion: "apps/v1",
+                    kind: "Deployment",
+                    name: service.name,
+                  },
+                  minReplicas: 1,
+                  maxReplicas: 10,
+                  metrics: [
+                    {
+                      type: "Resource",
+                      resource: {
+                        name: "cpu",
+                        target: {
+                          type: "Utilization",
+                          averageUtilization: 50,
+                        },
+                      },
+                    },
+                  ],
+                },
+              });
+            }
+          } else {
+            throw error;
+          }
+        }
         const r = await prisma.serviceConfig.update({
           where: {
             name_namespace: {
