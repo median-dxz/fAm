@@ -1,69 +1,18 @@
-import type { Graph } from "@/lib/graph/type";
-import { NodeType } from "@/lib/graph/type";
-import { api, k8sClient } from "@/lib/k8sClient";
-import { HttpError } from "@kubernetes/client-node";
+import { kube } from "../client/kubernetes";
+import type { IstioRequestsTotalMetricObject } from "../client/prometheus";
+import { NodeType, type Graph } from "../graph/type";
+import { procedure, router } from "../trpc";
 import { v4 as uuid } from "uuid";
 
-export const dynamic = "force-dynamic";
-
-interface Metric {
-  __name__: string;
-  app: string;
-  connection_security_policy: string;
-  destination_app: string;
-  destination_canonical_revision: string;
-  destination_canonical_service: string;
-  destination_cluster: string;
-  destination_principal: string;
-  destination_service: string;
-  destination_service_name: string;
-  destination_service_namespace: string;
-  destination_version: string;
-  destination_workload: string;
-  destination_workload_namespace: string;
-  instance: string;
-  job: string;
-  namespace: string;
-  pod: string;
-  pod_template_hash: string;
-  reporter: string;
-  request_protocol: string;
-  response_code: string;
-  response_flags: string;
-  security_istio_io_tlsMode: string;
-  service_istio_io_canonical_name: string;
-  service_istio_io_canonical_revision: string;
-  source_app: string;
-  source_canonical_revision: string;
-  source_canonical_service: string;
-  source_cluster: string;
-  source_principal: string;
-  source_version: string;
-  source_workload: string;
-  source_workload_namespace: string;
-  version: string;
-}
-
-interface MetricObject {
-  metric: Metric;
-  value: [number, string];
-}
-
-export async function GET(request: Request) {
-  const graph: Graph = {
-    nodes: [],
-  };
-
-  try {
-    if (!api) {
-      k8sClient.connect();
-    }
-    let servicesRes = await api?.core.listServiceForAllNamespaces();
+export const graphRouter = router({
+  get: procedure.query(async function () {
+    let servicesRes = await kube.api.core.listServiceForAllNamespaces();
     if (!servicesRes) {
       throw new Error("Failed to fetch services");
     }
 
     const services = servicesRes.body.items;
+    const graph: Graph = { nodes: [] };
     for (const service of services) {
       if (!service.metadata?.name || !service.metadata?.namespace) {
         continue;
@@ -77,7 +26,7 @@ export async function GET(request: Request) {
       });
     }
 
-    let deploymentRes = await api?.apps.listDeploymentForAllNamespaces();
+    let deploymentRes = await kube.api.apps.listDeploymentForAllNamespaces();
     if (!deploymentRes) {
       throw new Error("Failed to fetch deployments");
     }
@@ -96,7 +45,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const statefulSetRes = await api?.apps.listStatefulSetForAllNamespaces();
+    const statefulSetRes = await kube.api.apps.listStatefulSetForAllNamespaces();
     if (!statefulSetRes) {
       throw new Error("Failed to fetch statefulsets");
     }
@@ -119,7 +68,7 @@ export async function GET(request: Request) {
 
     const prometheusResponse: {
       status: "success";
-      data: { resultType: "vector"; result: Array<MetricObject> };
+      data: { resultType: "vector"; result: Array<IstioRequestsTotalMetricObject> };
     } = await fetch(`${process.env["PROMETHEUS_URL"]}/api/v1/query?query=${pql}`).then((r) => r.json());
 
     const requestMetrics = prometheusResponse.data.result;
@@ -175,15 +124,6 @@ export async function GET(request: Request) {
         edge.code = Array.from(new Set(edge.code));
       });
     });
-
-    return Response.json(graph);
-  } catch (error) {
-    console.error(`[API]: Error on ${request.url}`);
-    if (error instanceof HttpError) {
-      console.error(JSON.stringify(error));
-    } else {
-      console.error(error);
-    }
-    return Response.json({}, { status: 500, statusText: (error as Error).message });
-  }
-}
+    return graph;
+  }),
+});

@@ -1,18 +1,14 @@
 "use client";
 
 import { Loading } from "@/components/common/Loading";
-import { mutationApiBuilder, querySWRApiBuilder } from "@/lib/endpoints";
-import type { ServiceConfig } from "@/lib/controller/type";
-import { Button, Card, Divider, Legend, NumberInput, Switch } from "@tremor/react";
+import type { ServiceConfigQueryResult } from "@/server/controller/type";
+import { trpc } from "@/utils/trpc";
+import { Button, Card, Divider, NumberInput } from "@tremor/react";
 import { useState } from "react";
-import useSWR from "swr";
-
-const queryServiceConfig = querySWRApiBuilder("post:cluster/service/config");
-const updateServiceConfig = mutationApiBuilder("put:cluster/service/config");
 
 export function Main() {
-  const { data: serverData, mutate } = useSWR("post:cluster/service/config", queryServiceConfig);
-  const [config, setConfig] = useState<ServiceConfig[] | undefined>(serverData);
+  const { data: serverData } = trpc.serviceConfig.get.useQuery();
+  const [config, setConfig] = useState<ServiceConfigQueryResult[] | undefined>(serverData);
 
   if (config == undefined && serverData != undefined) {
     setConfig(serverData);
@@ -26,7 +22,7 @@ export function Main() {
       acc[c.namespace].push(c);
       return acc;
     },
-    {} as Record<string, ServiceConfig[]>,
+    {} as Record<string, ServiceConfigQueryResult[]>,
   );
 
   return (
@@ -40,7 +36,7 @@ export function Main() {
               key={namespace}
               namespace={namespace}
               configs={configs}
-              onChange={(newValue: ServiceConfig[]) => {
+              onChange={(newValue: ServiceConfigQueryResult[]) => {
                 setConfig((config) => {
                   return config?.map((c) => {
                     if (c.namespace === namespace) {
@@ -55,19 +51,7 @@ export function Main() {
         })
       )}
       {config != undefined && serverData != undefined && serverData != config && (
-        <Button
-          onClick={() => {
-            mutate(
-              (async () => {
-                updateServiceConfig({ body: config });
-                return undefined;
-              })(),
-              { optimisticData: config },
-            );
-          }}
-        >
-          Save
-        </Button>
+        <Button onClick={() => {}}>Save</Button>
       )}
     </div>
   );
@@ -75,8 +59,8 @@ export function Main() {
 
 interface ConfigCardGroupProps {
   namespace: string;
-  configs: ServiceConfig[];
-  onChange: (newValue: ServiceConfig[]) => void;
+  configs: ServiceConfigQueryResult[];
+  onChange: (newValue: ServiceConfigQueryResult[]) => void;
 }
 
 function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps) {
@@ -102,7 +86,7 @@ function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps)
 }
 
 interface ConfigCardProps {
-  config: ServiceConfig;
+  config: ServiceConfigQueryResult;
   onChange: (newConfig: { responseTime: number }) => void;
 }
 
@@ -112,14 +96,14 @@ function ConfigCard({ config, onChange }: ConfigCardProps) {
       <p className="text-tremor-title font-bold text-tremor-content-strong">{config.name}</p>
       <Divider />
       <span>HPA Status: {config.hpaStatus}</span>
-      {config.hpaRunningStatus && (
+      {config.serviceStatus && (
         <>
           <span>
-            Replicas: {config.hpaRunningStatus?.currentReplicas} / {config.hpaRunningStatus?.targetReplicas}
+            Replicas: {config.serviceStatus?.currentReplicas} / {config.serviceStatus?.targetReplicas}
           </span>
           <span>
-            Utilization: {config.hpaRunningStatus?.currentUtilizationPercentage}% /{" "}
-            {config.hpaRunningStatus?.targetUtilizationPercentage}%
+            Utilization: {config.serviceStatus?.currentUtilizationPercentage}% /{" "}
+            {config.serviceStatus?.targetUtilizationPercentage}%
           </span>
         </>
       )}

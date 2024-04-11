@@ -10,12 +10,14 @@ datasource db {
 }
 
 model Setting {
-  content String @unique
+  key     String @id @unique
+  content String
 }
 
 model ServiceConfig {
   name         String
   namespace    String @default("default")
   responseTime Int
+
   @@id([name, namespace])
 }

@@ -1,14 +1,11 @@
 "use client";
 
-import { querySWRApiBuilder } from "@/lib/endpoints";
+import { trpc } from "@/utils/trpc";
 import cytoscape from "cytoscape";
 import { useEffect } from "react";
-import useSWR from "swr";
-
-const getGraph = querySWRApiBuilder("get:server/graph");
 
 export function Main() {
-  const { data: graph } = useSWR("get:server/graph", getGraph);
+  const { data: graph } = trpc.graph.get.useQuery();
 
   useEffect(() => {
     const cy = cytoscape({

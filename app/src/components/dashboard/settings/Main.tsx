@@ -1,34 +1,31 @@
 "use client";
 
-import { Button, Card, Dialog, DialogPanel, Divider, TextInput, Textarea } from "@tremor/react";
-import { useState } from "react";
-import { RiLoaderLine, RiGlobalLine, RiErrorWarningLine } from "@remixicon/react";
-
-import type { StrategyService } from "@/lib/setting";
-import { mutationApiBuilder, querySWRApiBuilder } from "@/lib/endpoints";
-import { debounce } from "@/lib/utils/debounce";
-import useSWR, { type KeyedMutator } from "swr";
 import { Loading } from "@/components/common/Loading";
+import type { ApplicationSettings } from "@/server/setting-manager";
+import { useDebounce } from "@/utils/hooks/useDebounce";
+import { trpc } from "@/utils/trpc";
+import { RiErrorWarningLine, RiGlobalLine, RiLoaderLine } from "@remixicon/react";
+import { Button, Card, Dialog, DialogPanel, Divider, TextInput, Textarea } from "@tremor/react";
 import clsx from "clsx";
-
-const updateStratyegyService = mutationApiBuilder("put:server/setting/strategy-service");
-const getStratyegyService = querySWRApiBuilder("get:server/setting/strategy-service");
-const getServerStatus = querySWRApiBuilder("get:server/status");
+import { useCallback, useRef, useState } from "react";
+import { z } from "zod";
 
 export function Main() {
-  const { data: strategyService, mutate: mutateStrategyService } = useSWR(
-    "get:server/setting/strategy-service",
-    getStratyegyService,
-  );
+  const { data: strategyService, refetch: refetchStrategyService } = trpc.application.getSetting.useQuery({
+    item: "strategyService",
+  });
 
-  const { data: serverStatus } = useSWR("get:server/status", getServerStatus);
+  const strategyServiceMutation = trpc.application.patchSetting.useMutation({
+    onSettled() {
+      refetchStrategyService();
+    },
+  });
+
+  const { data: serverStatus } = trpc.application.getStatus.useQuery();
 
   return (
     <div className="flex flex-col min-h-[100vh] w-[80%] mx-auto justify-center items-start space-y-6">
-      <StrategyServiceSettings
-        setting={strategyService}
-        onMutate={debounce(mutateStrategyService, 1000) as KeyedMutator<StrategyService>}
-      />
+      <StrategyServiceSettings setting={strategyService} mutation={strategyServiceMutation} />
       <PrometheusSettings
         setting={
           serverStatus ? { connected: serverStatus.prometheusConnected, url: serverStatus.prometheusUrl } : undefined
@@ -39,18 +36,37 @@ export function Main() {
 }
 
 interface StrategyServiceSettingsProps {
-  setting?: StrategyService;
-  onMutate: KeyedMutator<StrategyService>;
+  setting?: ApplicationSettings["strategyService"];
+  mutation: ReturnType<typeof trpc.application.patchSetting.useMutation>;
 }
 
-function StrategyServiceSettings({ setting, onMutate }: StrategyServiceSettingsProps) {
-  const [strategyService, setStrategyService] = useState<StrategyService | undefined>(setting);
-  const [updating, setUpdating] = useState(false);
+function StrategyServiceSettings({ setting, mutation }: StrategyServiceSettingsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatus, setDialogStatus] = useState({ title: "", message: "", success: false });
 
-  if (strategyService == undefined && setting != undefined) {
+  const [updating, setUpdating] = useState(false);
+  const [strategyService, setStrategyService] = useState(setting);
+  const previousSetting = useRef(setting);
+
+  const { mutateAsync: testStrategyService, isPending: isTesting } = trpc.application.testStrategyService.useMutation();
+
+  const { mutate } = mutation;
+
+  const updateStrategyService = useCallback(
+    async (value: ApplicationSettings["strategyService"]) => {
+      if (value) {
+        mutate({ item: "strategyService", value });
+        setUpdating(false);
+      }
+    },
+    [mutate],
+  );
+
+  const debouncedUpdate = useDebounce(updateStrategyService, 1000);
+
+  if (previousSetting.current !== setting) {
     setStrategyService(setting);
+    previousSetting.current = setting;
   }
 
   return (
@@ -63,47 +79,34 @@ function StrategyServiceSettings({ setting, onMutate }: StrategyServiceSettingsP
             <span className="text-tremor-default font-bold text-tremor-content-emphasis">Service URL: </span>
             <TextInput
               value={strategyService.url}
+              name="strategy-service-url"
               type="url"
               icon={
-                updating
+                updating || isTesting
                   ? ({ className }: { className: string }) => (
                       <RiLoaderLine className={clsx(className, "animate-spin")} />
                     )
-                  : strategyService.url.match(/^https?:\/\/.+/) === null
-                    ? RiErrorWarningLine
-                    : RiGlobalLine
+                  : z.string().url().safeParse(strategyService.url).success
+                    ? RiGlobalLine
+                    : RiErrorWarningLine
               }
               onValueChange={async (v: string) => {
                 setUpdating(true);
                 setStrategyService({ ...strategyService, url: v });
-                onMutate(async () => {
-                  await updateStratyegyService({ body: { ...strategyService, url: v } });
-                  setUpdating(false);
-                  return undefined;
-                });
+                debouncedUpdate({ ...strategyService, url: v });
               }}
             />
           </label>
           <div className="flex flex-row space-x-2">
             <Button
               onClick={async () => {
-                try {
-                  if (!strategyService.url.match(/^https?:\/\/.+/)) {
-                    setDialogStatus({ title: "测试策略服务连接", message: "非法URL", success: false });
-                    setDialogOpen(true);
-                    return;
-                  }
-                  setUpdating(true);
-                  await fetch(strategyService.url); // TODO test on server side
-                  // 更改message
-                  setDialogStatus({ title: "测试策略服务连接", message: "测试成功", success: true });
-                  setDialogOpen(true);
-                } catch (error) {
-                  setDialogStatus({ title: "测试策略服务连接", message: (error as Error).message, success: false });
-                  setDialogOpen(true);
-                } finally {
-                  setUpdating(false);
-                }
+                const testResult = await testStrategyService(strategyService.url);
+                setDialogOpen(true);
+                setDialogStatus({
+                  title: "Strategy Service Test",
+                  message: testResult.message ?? "",
+                  success: testResult.success ?? false,
+                });
               }}
             >
               测试
@@ -136,6 +139,8 @@ function PrometheusSettings({ setting }: PrometheusSettingsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatus, setDialogStatus] = useState({ message: "" });
   const [pql, setPql] = useState("");
+
+  const { mutateAsync } = trpc.application.testPrometheus.useMutation();
   return (
     <Card className="flex flex-col space-y-4">
       <p className="text-tremor-title font-bold text-tremor-content-strong">Prometheus Settings</p>
@@ -146,6 +151,7 @@ function PrometheusSettings({ setting }: PrometheusSettingsProps) {
             <span className="text-tremor-default font-bold text-tremor-content-emphasis">Prometheus URL: </span>
             <TextInput
               disabled
+              name="prometheus-url"
               value={setting.url ?? ""}
               type="url"
               icon={setting.connected ? RiGlobalLine : RiErrorWarningLine}
@@ -155,13 +161,12 @@ function PrometheusSettings({ setting }: PrometheusSettingsProps) {
           <div className="flex flex-row space-x-2">
             <label className="flex flex-row space-x-2 items-center w-full">
               <span className="text-tremor-default whitespace-nowrap">PQL Test: </span>
-              <TextInput value={pql} onValueChange={setPql} />
+              <TextInput name="prometheus-pql" type="text" value={pql} onValueChange={setPql} />
             </label>
             <Button
               onClick={async () => {
                 try {
-                  const res = await fetch("/api/prometheus/query?query=" + pql);
-                  const data = await res.json();
+                  const data = await mutateAsync(pql);
                   setDialogStatus({ message: JSON.stringify(data, undefined, 4) });
                 } catch (error) {
                   setDialogStatus({ message: (error as Error).message });
@@ -175,7 +180,7 @@ function PrometheusSettings({ setting }: PrometheusSettingsProps) {
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} static={true} className="z-[100]">
               <DialogPanel>
                 <Textarea
-                  className="text-tremor-content-emphasis p-4 overflow-clip"
+                  className="text-tremor-content-emphasis p-4 overflow-auto max-h-96"
                   value={dialogStatus.message}
                   autoHeight
                   disabled

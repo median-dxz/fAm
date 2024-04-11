@@ -1,28 +1,19 @@
 "use client";
 
-import { RiRefreshLine, RiGitForkLine, RiBox1Line, RiGlobalLine, RiServerLine } from "@remixicon/react";
-import { Button, Badge, Legend } from "@tremor/react";
-import { useCallback, useEffect, type MouseEventHandler } from "react";
-import useSWRMutation from "swr/mutation";
-
-import { mutationSWRApiBuilder, querySWRApiBuilder } from "@/lib/endpoints";
-import useSWR from "swr";
-
-const getCluster = mutationSWRApiBuilder("get:cluster");
-const getApplicationStatus = querySWRApiBuilder("get:server/status");
+import { Loading } from "@/components/common/Loading";
+import { trpc } from "@/utils/trpc";
+import { RiBox1Line, RiGitForkLine, RiGlobalLine, RiRefreshLine } from "@remixicon/react";
+import { Badge, Button, Legend } from "@tremor/react";
+import { useCallback, type MouseEventHandler } from "react";
 
 export function Main() {
-  const { error, isMutating, trigger } = useSWRMutation("get:cluster", getCluster);
-  const { data: status, mutate } = useSWR("get:server/status", getApplicationStatus);
+  const clusterQuery = trpc.cluster.get.useQuery(undefined, { refetchOnWindowFocus: "always" });
+  const clusterReconnect = trpc.cluster.reconnnect.useMutation();
 
   const refresh: MouseEventHandler<HTMLButtonElement> = useCallback(async () => {
-    trigger({});
-    mutate();
-  }, [trigger, mutate]);
-
-  useEffect(() => {
-    trigger({ param: { reuse: "true" } });
-  }, [trigger]);
+    await clusterReconnect.mutateAsync();
+    clusterQuery.refetch();
+  }, [clusterQuery, clusterReconnect]);
 
   return (
     <div className="flex flex-col w-[80%] mx-auto min-h-[100vh] justify-center items-center space-y-2">
@@ -30,29 +21,28 @@ export function Main() {
         fill A moment
       </div>
       <span className="py-4">
-        <Button icon={RiRefreshLine} onClick={refresh} variant="secondary" loading={isMutating} loadingText="刷新中...">
+        <Button
+          icon={RiRefreshLine}
+          onClick={refresh}
+          variant="secondary"
+          loading={clusterReconnect.isPending}
+          loadingText="刷新中..."
+        >
           刷新
         </Button>
       </span>
-      {error ? (
-        <div>{error.message}</div>
-      ) : status ? (
-        <AppInfo {...status} />
-      ) : (
-        <Button loading={true} loadingText="拉取数据中..." variant="secondary" />
-      )}
+      {clusterQuery.isError ? <div>{clusterQuery.error.message}</div> : <AppInfo />}
     </div>
   );
 }
 
-const AppInfo = ({
-  cluster,
-  inCluster,
-  isProd,
-  clusterConnected,
-  prometheusConnected,
-  prometheusUrl,
-}: Awaited<ReturnType<typeof getApplicationStatus>>) => {
+const AppInfo = () => {
+  const { data } = trpc.application.getStatus.useQuery();
+
+  if (!data) return <Loading text="加载中..." />;
+
+  const { isProd, inCluster, cluster, prometheusUrl, clusterConnected, prometheusConnected } = data;
+
   return (
     <>
       <div className="flex flex-row flex-wrap w-[80%] justify-center *:m-2">
