@@ -5,6 +5,7 @@ import { prisma } from "@/server/client/prisma";
 import type { Setting } from "@prisma/client";
 import { defaultSetting } from "./default";
 import type { ApplicationSettings } from "./type";
+import clone from "rfdc";
 
 export const settingManager: {
   cachedSetting?: ApplicationSettings;
@@ -28,7 +29,12 @@ export const settingManager: {
         },
       });
     }
-    this.cachedSetting = { ...defaultSetting, ...setting };
+
+    this.cachedSetting = clone()(defaultSetting);
+
+    setting.forEach((s) => {
+      this.cachedSetting![s.key as keyof ApplicationSettings] = JSON.parse(s.content);
+    });
   },
 
   async getItme(key) {
