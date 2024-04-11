@@ -85,7 +85,7 @@ export const serviceConfigRouter = router({
     }),
   patch: procedure
     .input(z.array(z.object({ name: z.string(), namespace: z.string(), responseTime: z.number() })))
-    .query(async ({ input: query }) => {
+    .mutation(async ({ input: query }) => {
       const promises = query.map(async (service) => {
         const hpaEnabled = Boolean(service.responseTime !== -1);
         try {

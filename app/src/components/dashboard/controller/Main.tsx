@@ -4,14 +4,24 @@ import { Loading } from "@/components/common/Loading";
 import type { ServiceConfigQueryResult } from "@/server/controller/type";
 import { trpc } from "@/utils/trpc";
 import { Button, Card, Divider, NumberInput } from "@tremor/react";
-import { useState } from "react";
+import { produce } from "immer";
+import { useRef, useState } from "react";
 
 export function Main() {
-  const { data: serverData } = trpc.serviceConfig.get.useQuery();
+  const { data: serverData, refetch: refetchServiceConfig } = trpc.serviceConfig.get.useQuery();
+  const { mutateAsync } = trpc.serviceConfig.patch.useMutation({
+    onSettled(data, error, variables, context) {
+      refetchServiceConfig();
+    },
+  });
   const [config, setConfig] = useState<ServiceConfigQueryResult[] | undefined>(serverData);
+  const [userModified, setUserModified] = useState(false);
+  const previousSetting = useRef(serverData);
 
-  if (config == undefined && serverData != undefined) {
+  if (previousSetting.current !== serverData) {
+    previousSetting.current = serverData;
     setConfig(serverData);
+    setUserModified(false);
   }
 
   const configByGroup = config?.reduce(
@@ -37,21 +47,31 @@ export function Main() {
               namespace={namespace}
               configs={configs}
               onChange={(newValue: ServiceConfigQueryResult[]) => {
-                setConfig((config) => {
-                  return config?.map((c) => {
-                    if (c.namespace === namespace) {
-                      return newValue.find((nc) => nc.name === c.name) || c;
-                    }
-                    return c;
-                  });
-                });
+                setUserModified(true);
+                setConfig(
+                  produce((draft) => {
+                    if (!draft) return;
+                    newValue.forEach((newConfig) => {
+                      const index = draft.findIndex(
+                        (c) => c.name === newConfig.name && c.namespace === newConfig.namespace,
+                      );
+                      draft[index] = newConfig;
+                    });
+                  }),
+                );
               }}
             />
           );
         })
       )}
-      {config != undefined && serverData != undefined && serverData != config && (
-        <Button onClick={() => {}}>Save</Button>
+      {config != undefined && serverData != undefined && userModified && (
+        <Button
+          onClick={() => {
+            mutateAsync(config);
+          }}
+        >
+          Save
+        </Button>
       )}
     </div>
   );
@@ -75,7 +95,12 @@ function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps)
               key={`${config.namespace}-${config.name}`}
               config={config}
               onChange={(newConfig: { responseTime: number }) => {
-                onChange(configs.map((c) => (c.name === config.name ? { ...c, ...newConfig } : c)));
+                onChange(
+                  produce(configs, (draft) => {
+                    const index = draft.findIndex((c) => c.name === config.name);
+                    draft[index] = { ...draft[index], ...newConfig };
+                  }),
+                );
               }}
             />
           );
