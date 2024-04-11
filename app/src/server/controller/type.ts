@@ -1,8 +1,5 @@
 export interface ServiceStatus {
-  workload: {
-    name: string;
-    namespace: string;
-  };
+  workload: Workload;
   //   currentResponseTime: number; // TODO implment this
   currentReplicas: number;
   currentUtilizationPercentage: number;
@@ -10,7 +7,7 @@ export interface ServiceStatus {
   targetUtilizationPercentage: number;
 }
 
-export type HpaStatus = "configured" | "not-configured" | "not-created";
+export type HpaStatus = "configured" | "not-configured" | "multiple" | "not-created";
 
 export interface ServiceConfigQueryResult {
   name: string;
@@ -19,3 +16,11 @@ export interface ServiceConfigQueryResult {
   hpaStatus: HpaStatus;
   serviceStatus?: ServiceStatus;
 }
+
+export interface Workload {
+  name: string;
+  namespace: string;
+  type: WorkloadType;
+}
+
+export type WorkloadType = "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";

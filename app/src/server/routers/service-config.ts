@@ -1,23 +1,12 @@
 import { kube } from "@/server/client/kubernetes";
-import { prisma } from "@/server/client/prisma";
-import type { ServiceConfigQueryResult, ServiceStatus } from "@/server/controller/type";
-import { HttpError, V2HorizontalPodAutoscaler } from "@kubernetes/client-node";
-import type { ServiceConfig } from "@prisma/client";
+import type { ServiceConfigQueryResult, Workload } from "@/server/controller/type";
+import { HttpError } from "@kubernetes/client-node";
+import stringify from "json-stable-stringify";
 import { z } from "zod";
 import { procedure, router } from "../trpc";
 
-function getHpaRunningStatus(
-  hpa: V2HorizontalPodAutoscaler,
-): Pick<
-  ServiceStatus,
-  "currentReplicas" | "currentUtilizationPercentage" | "targetReplicas" | "targetUtilizationPercentage"
-> {
-  return {
-    currentReplicas: hpa.status!.currentReplicas || NaN,
-    targetReplicas: hpa.status!.desiredReplicas,
-    currentUtilizationPercentage: hpa.status!.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
-    targetUtilizationPercentage: hpa.spec!.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
-  };
+async function getWorkloadByService(service: { name: string; namespace: string }) {
+
 }
 
 export const serviceConfigRouter = router({
@@ -38,49 +27,33 @@ export const serviceConfigRouter = router({
           return !query || query.some((r) => r.name === service.name && r.namespace === service.namespace);
         });
 
-      const servicesWithResponseTime: Array<ServiceConfig> = [];
-
-      for (const service of servicesByQuery) {
-        const serviceConfig = await prisma.serviceConfig.upsert({
-          where: {
-            name_namespace: {
-              name: service.name,
-              namespace: service.namespace,
-            },
-          },
-          create: {
-            name: service.name,
-            namespace: service.namespace,
-            responseTime: -1,
-          },
-          update: {},
-        });
-        servicesWithResponseTime.push(serviceConfig);
-      }
-
       const hpaList = (await kube.api.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
 
-      return servicesWithResponseTime.map((service) => {
+      return servicesByQuery.map((service) => {
         const hpa = hpaList.find((hpa) => {
           return (
-            hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-auto-configured" &&
-            hpa.metadata?.namespace === service.namespace &&
-            hpa.metadata?.annotations?.["app.kubernetes.io/instance"] === service.name
+            hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-autoscaler-manager" &&
+            hpa.metadata?.annotations?.["workload"] ===
+              JSON.stringify({ name: service.name, namespace: service.namespace, type: "deployment" })
           );
         });
+
         return {
-          ...service,
+          name: service.name,
+          namespace: service.namespace,
+          responseTime: hpa ? Number(hpa.metadata?.annotations?.["response-time"]) ?? -1 : -1,
           hpaStatus: hpa ? "configured" : "not-created",
           serviceStatus: hpa
             ? {
+                workload: JSON.parse(hpa.metadata?.annotations?.["workload"]!) as Workload,
                 currentReplicas: hpa.status?.currentReplicas || NaN,
                 currentUtilizationPercentage:
                   hpa.status?.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
-                targetReplicas: hpa.status?.desiredReplicas,
+                targetReplicas: hpa.status?.desiredReplicas || NaN,
                 targetUtilizationPercentage: hpa.spec?.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
               }
             : undefined,
-        } as ServiceConfigQueryResult;
+        } satisfies ServiceConfigQueryResult;
       });
     }),
   patch: procedure
@@ -108,8 +81,11 @@ export const serviceConfigRouter = router({
                 metadata: {
                   name: `fam-hpa-${service.name}`,
                   labels: {
-                    "app.kubernetes.io/managed-by": "fam-auto-configured",
-                    "app.kubernetes.io/instance": service.name,
+                    "app.kubernetes.io/managed-by": "fam-autoscaler-manager",
+                  },
+                  annotations: {
+                    "response-time": service.responseTime.toString(),
+                    workload: stringify({ name: service.name, namespace: service.namespace, type: "deployment" }),
                   },
                 },
                 spec: {
@@ -139,17 +115,6 @@ export const serviceConfigRouter = router({
             throw error;
           }
         }
-        const r = await prisma.serviceConfig.update({
-          where: {
-            name_namespace: {
-              name: service.name,
-              namespace: service.namespace,
-            },
-          },
-          data: {
-            responseTime: service.responseTime,
-          },
-        });
       });
       await Promise.all(promises);
       return { success: true };
