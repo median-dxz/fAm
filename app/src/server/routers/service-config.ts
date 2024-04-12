@@ -1,12 +1,13 @@
 import { kube } from "@/server/client/kubernetes";
 import type { ServiceConfigQueryResult, Workload } from "@/server/controller/type";
-import { HttpError } from "@kubernetes/client-node";
+import { HttpError, V1ServiceSpec } from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
 import { z } from "zod";
 import { procedure, router } from "../trpc";
 
-async function getWorkloadByService(service: { name: string; namespace: string }) {
-
+async function getWorkloadByService(serviceSpec: V1ServiceSpec) {
+  const selector = serviceSpec.selector;
+  if (!selector) return null;
 }
 
 export const serviceConfigRouter = router({
@@ -29,32 +30,35 @@ export const serviceConfigRouter = router({
 
       const hpaList = (await kube.api.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
 
-      return servicesByQuery.map((service) => {
-        const hpa = hpaList.find((hpa) => {
-          return (
-            hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-autoscaler-manager" &&
-            hpa.metadata?.annotations?.["workload"] ===
-              JSON.stringify({ name: service.name, namespace: service.namespace, type: "deployment" })
-          );
-        });
+      return Promise.all(
+        servicesByQuery.map(async (service) => {
+          const workload = await 
+          const hpa = hpaList.find((hpa) => {
+            return (
+              hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-autoscaler-manager" &&
+              hpa.metadata?.annotations?.["workload"] ===
+                JSON.stringify({ name: service.name, namespace: service.namespace, type: "deployment" })
+            );
+          });
 
-        return {
-          name: service.name,
-          namespace: service.namespace,
-          responseTime: hpa ? Number(hpa.metadata?.annotations?.["response-time"]) ?? -1 : -1,
-          hpaStatus: hpa ? "configured" : "not-created",
-          serviceStatus: hpa
-            ? {
-                workload: JSON.parse(hpa.metadata?.annotations?.["workload"]!) as Workload,
-                currentReplicas: hpa.status?.currentReplicas || NaN,
-                currentUtilizationPercentage:
-                  hpa.status?.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
-                targetReplicas: hpa.status?.desiredReplicas || NaN,
-                targetUtilizationPercentage: hpa.spec?.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
-              }
-            : undefined,
-        } satisfies ServiceConfigQueryResult;
-      });
+          return {
+            name: service.name,
+            namespace: service.namespace,
+            responseTime: hpa ? Number(hpa.metadata?.annotations?.["response-time"]) ?? -1 : -1,
+            hpaStatus: hpa ? "configured" : "not-created",
+            serviceStatus: hpa
+              ? {
+                  workload: JSON.parse(hpa.metadata?.annotations?.["workload"]!) as Workload,
+                  currentReplicas: hpa.status?.currentReplicas || NaN,
+                  currentUtilizationPercentage:
+                    hpa.status?.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
+                  targetReplicas: hpa.status?.desiredReplicas || NaN,
+                  targetUtilizationPercentage: hpa.spec?.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
+                }
+              : undefined,
+          } satisfies ServiceConfigQueryResult;
+        }),
+      );
     }),
   patch: procedure
     .input(z.array(z.object({ name: z.string(), namespace: z.string(), responseTime: z.number() })))
