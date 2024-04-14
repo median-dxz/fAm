@@ -3,12 +3,20 @@
 import { Loading } from "@/components/common/Loading";
 import type { ServiceConfigQueryResult } from "@/server/controller/type";
 import { trpc } from "@/utils/trpc";
-import { Button, Card, Divider, NumberInput } from "@tremor/react";
+import { Button, Card, Divider, Legend, NumberInput } from "@tremor/react";
 import { produce } from "immer";
 import { useRef, useState } from "react";
+import { generatePatchConfigs } from "./generatePatchConfigs";
 
 export function Main() {
-  const { data: serverData, refetch: refetchServiceConfig } = trpc.serviceConfig.get.useQuery();
+  const {
+    data: serverData,
+    refetch: refetchServiceConfig,
+    error,
+    isError,
+  } = trpc.serviceConfig.get.useQuery(undefined, {
+    refetchInterval: 1000 * 15,
+  });
   const { mutateAsync } = trpc.serviceConfig.patch.useMutation({
     onSettled(data, error, variables, context) {
       refetchServiceConfig();
@@ -26,48 +34,48 @@ export function Main() {
 
   const configByGroup = config?.reduce(
     (acc, c) => {
-      if (!acc[c.namespace]) {
-        acc[c.namespace] = [];
+      if (!acc[c.serviceNamespace]) {
+        acc[c.serviceNamespace] = [];
       }
-      acc[c.namespace].push(c);
+      acc[c.serviceNamespace].push(c);
       return acc;
     },
     {} as Record<string, ServiceConfigQueryResult[]>,
   );
 
+  const errorComponent = <div className="text-tremor-title text-tremor-content-emphasis">Error: {error?.message}</div>;
+
+  const contentComponent = configByGroup
+    ? Object.entries(configByGroup).map(([namespace, configs]) => (
+        <ConfigCardGroup
+          key={namespace}
+          namespace={namespace}
+          configs={configs}
+          onChange={(newValue: ServiceConfigQueryResult[]) => {
+            setUserModified(true);
+            setConfig(
+              produce((draft) => {
+                if (!draft) return;
+                newValue.forEach((newConfig) => {
+                  const index = draft.findIndex(
+                    (c) => c.serviceName === newConfig.serviceName && c.serviceNamespace === newConfig.serviceNamespace,
+                  );
+                  draft[index] = newConfig;
+                });
+              }),
+            );
+          }}
+        />
+      ))
+    : null;
+
   return (
     <div className="flex flex-row flex-wrap min-h-[100vh] w-[80%] mx-auto justify-center items-start py-6 space-y-6">
-      {config == undefined ? (
-        <Loading />
-      ) : (
-        Object.entries(configByGroup!).map(([namespace, configs]) => {
-          return (
-            <ConfigCardGroup
-              key={namespace}
-              namespace={namespace}
-              configs={configs}
-              onChange={(newValue: ServiceConfigQueryResult[]) => {
-                setUserModified(true);
-                setConfig(
-                  produce((draft) => {
-                    if (!draft) return;
-                    newValue.forEach((newConfig) => {
-                      const index = draft.findIndex(
-                        (c) => c.name === newConfig.name && c.namespace === newConfig.namespace,
-                      );
-                      draft[index] = newConfig;
-                    });
-                  }),
-                );
-              }}
-            />
-          );
-        })
-      )}
+      {isError ? errorComponent : config == undefined ? <Loading /> : contentComponent}
       {config != undefined && serverData != undefined && userModified && (
         <Button
           onClick={() => {
-            mutateAsync(config);
+            mutateAsync(generatePatchConfigs(serverData, config));
           }}
         >
           Save
@@ -92,12 +100,12 @@ function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps)
         {configs.map((config) => {
           return (
             <ConfigCard
-              key={`${config.namespace}-${config.name}`}
+              key={`${config.serviceNamespace}-${config.serviceName}`}
               config={config}
-              onChange={(newConfig: { responseTime: number }) => {
+              onChange={(newConfig) => {
                 onChange(
                   produce(configs, (draft) => {
-                    const index = draft.findIndex((c) => c.name === config.name);
+                    const index = draft.findIndex((c) => c.serviceName === config.serviceName);
                     draft[index] = { ...draft[index], ...newConfig };
                   }),
                 );
@@ -112,41 +120,58 @@ function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps)
 
 interface ConfigCardProps {
   config: ServiceConfigQueryResult;
-  onChange: (newConfig: { responseTime: number }) => void;
+  onChange: (newConfig: { responseTime?: number }) => void;
 }
 
 function ConfigCard({ config, onChange }: ConfigCardProps) {
   return (
     <Card className="flex flex-col space-y-4 w-fit">
-      <p className="text-tremor-title font-bold text-tremor-content-strong">{config.name}</p>
+      <div className="flex flex-row items-baseline">
+        <p className="text-tremor-title font-bold text-tremor-content-strong">{config.serviceName}</p>
+        <Legend
+          categories={[config.hpaState]}
+          colors={[
+            config.hpaState === "configured"
+              ? "green"
+              : config.hpaState === "not-created"
+                ? "gray"
+                : config.hpaState === "not-managed"
+                  ? "orange"
+                  : "red",
+          ]}
+        />
+      </div>
       <Divider />
-      <span>HPA Status: {config.hpaStatus}</span>
-      {config.serviceStatus && (
+
+      {config.workloadStatus && (
         <>
           <span>
-            Replicas: {config.serviceStatus?.currentReplicas} / {config.serviceStatus?.targetReplicas}
+            Replicas: {config.workloadStatus?.currentReplicas} / {config.workloadStatus?.targetReplicas}
           </span>
           <span>
-            Utilization: {config.serviceStatus?.currentUtilizationPercentage}% /{" "}
-            {config.serviceStatus?.targetUtilizationPercentage}%
+            Utilization: {config.workloadStatus?.currentUtilizationPercentage}% /
+            {config.workloadStatus?.targetUtilizationPercentage}%
           </span>
         </>
       )}
 
       <div className="flex flex-row items-center space-x-2">
-        <span className="whitespace-nowrap">Response Time: </span>
+        <span className="whitespace-nowrap text-tremor-content">Response Time: </span>
         <NumberInput
           name="responseTime"
+          placeholder=""
+          disabled={config.hpaState !== "configured" && config.hpaState !== "not-created"}
           enableStepper={false}
-          value={config.responseTime === -1 ? "" : config.responseTime}
+          value={config.responseTime ?? ""}
           min={1}
           onValueChange={(newValue) => {
             onChange({
-              responseTime: newValue == null || isNaN(newValue) ? -1 : newValue,
+              responseTime: isNaN(newValue) ? undefined : newValue,
             });
           }}
         />
-        <span className="text-tremor-content">ms</span>
+        <span className="whitespace-nowrap text-tremor-content"> / </span>
+        <span className="whitespace-nowrap text-tremor-content"> ? ms</span>
       </div>
     </Card>
   );

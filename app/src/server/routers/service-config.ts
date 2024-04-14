@@ -1,126 +1,33 @@
-import { kube } from "@/server/client/kubernetes";
-import type { ServiceConfigQueryResult, Workload } from "@/server/controller/type";
-import { HttpError, V1ServiceSpec } from "@kubernetes/client-node";
-import stringify from "json-stable-stringify";
-import { z } from "zod";
-import { procedure, router } from "../trpc";
+import { ServiceHorizontalPodAutoscalerController } from "@/server/controller";
+import { HpaPatchConfigSchema, ServiceQuerySchema, type ServiceConfigQueryResult } from "@/server/controller/type";
+import { procedure, router } from "@/server/trpc";
 
-async function getWorkloadByService(serviceSpec: V1ServiceSpec) {
-  const selector = serviceSpec.selector;
-  if (!selector) return null;
-}
+import { z } from "zod";
 
 export const serviceConfigRouter = router({
-  get: procedure
-    .input(z.array(z.object({ name: z.string(), namespace: z.string() })).nullish())
-    .query(async ({ input: query }) => {
-      const servicesByQuery = (await kube.api.core.listServiceForAllNamespaces()).body.items
-        .map((item) => {
-          if (!item.metadata?.name || !item.metadata?.namespace) {
-            throw new Error(`Failed to fetch services: ${item.metadata?.name} ${item.metadata?.namespace}`);
-          }
-          return {
-            name: item.metadata.name,
-            namespace: item.metadata.namespace,
-          };
-        })
-        .filter((service) => {
-          return !query || query.some((r) => r.name === service.name && r.namespace === service.namespace);
-        });
+  get: procedure.input(z.array(ServiceQuerySchema).optional()).query(async ({ input: queries }) => {
+    return (await ServiceHorizontalPodAutoscalerController.fromServiceQueries(queries)).map((result) => {
+      return {
+        serviceName: result.serviceName,
+        serviceNamespace: result.serviceNamespace,
+        responseTime: result.responseTime,
+        hpaState: result.hpaStatus,
+        workload: result.workloads?.[0],
+        workloadStatus: result.workloadStatus,
+      } satisfies ServiceConfigQueryResult;
+    });
+  }),
+  patch: procedure.input(z.array(HpaPatchConfigSchema)).mutation(async ({ input: queries }) => {
+    const controllers = await ServiceHorizontalPodAutoscalerController.fromServiceQueries(queries);
 
-      const hpaList = (await kube.api.autoscaling.listHorizontalPodAutoscalerForAllNamespaces()).body.items;
+    const patchResults = [];
 
-      return Promise.all(
-        servicesByQuery.map(async (service) => {
-          const workload = await 
-          const hpa = hpaList.find((hpa) => {
-            return (
-              hpa.metadata?.labels?.["app.kubernetes.io/managed-by"] === "fam-autoscaler-manager" &&
-              hpa.metadata?.annotations?.["workload"] ===
-                JSON.stringify({ name: service.name, namespace: service.namespace, type: "deployment" })
-            );
-          });
+    for (let i = 0; i < queries.length; i++) {
+      console.log(`patching ${queries[i].serviceNamespace}/${queries[i].serviceName}`);
+      patchResults.push(await controllers[i].patch(queries[i]));
+      console.log(`patch result: ${patchResults[i].message}`);
+    }
 
-          return {
-            name: service.name,
-            namespace: service.namespace,
-            responseTime: hpa ? Number(hpa.metadata?.annotations?.["response-time"]) ?? -1 : -1,
-            hpaStatus: hpa ? "configured" : "not-created",
-            serviceStatus: hpa
-              ? {
-                  workload: JSON.parse(hpa.metadata?.annotations?.["workload"]!) as Workload,
-                  currentReplicas: hpa.status?.currentReplicas || NaN,
-                  currentUtilizationPercentage:
-                    hpa.status?.currentMetrics?.[0].resource?.current.averageUtilization || NaN,
-                  targetReplicas: hpa.status?.desiredReplicas || NaN,
-                  targetUtilizationPercentage: hpa.spec?.metrics?.[0]?.resource?.target?.averageUtilization || NaN,
-                }
-              : undefined,
-          } satisfies ServiceConfigQueryResult;
-        }),
-      );
-    }),
-  patch: procedure
-    .input(z.array(z.object({ name: z.string(), namespace: z.string(), responseTime: z.number() })))
-    .mutation(async ({ input: query }) => {
-      const promises = query.map(async (service) => {
-        const hpaEnabled = Boolean(service.responseTime !== -1);
-        try {
-          await kube.api.autoscaling.readNamespacedHorizontalPodAutoscaler(
-            `fam-hpa-${service.name}`,
-            service.namespace,
-          );
-          if (!hpaEnabled) {
-            console.log(`delete hpa for: ${service.name} ${service.namespace}`);
-            await kube.api.autoscaling.deleteNamespacedHorizontalPodAutoscaler(
-              `fam-hpa-${service.name}`,
-              service.namespace,
-            );
-          }
-        } catch (error) {
-          if (error instanceof HttpError && error.response.statusCode === 404) {
-            if (hpaEnabled) {
-              console.log(`create hpa for: ${service.name} ${service.namespace}`);
-              await kube.api.autoscaling.createNamespacedHorizontalPodAutoscaler(service.namespace, {
-                metadata: {
-                  name: `fam-hpa-${service.name}`,
-                  labels: {
-                    "app.kubernetes.io/managed-by": "fam-autoscaler-manager",
-                  },
-                  annotations: {
-                    "response-time": service.responseTime.toString(),
-                    workload: stringify({ name: service.name, namespace: service.namespace, type: "deployment" }),
-                  },
-                },
-                spec: {
-                  scaleTargetRef: {
-                    apiVersion: "apps/v1",
-                    kind: "Deployment",
-                    name: service.name,
-                  },
-                  minReplicas: 1,
-                  maxReplicas: 10,
-                  metrics: [
-                    {
-                      type: "Resource",
-                      resource: {
-                        name: "cpu",
-                        target: {
-                          type: "Utilization",
-                          averageUtilization: 50,
-                        },
-                      },
-                    },
-                  ],
-                },
-              });
-            }
-          } else {
-            throw error;
-          }
-        }
-      });
-      await Promise.all(promises);
-      return { success: true };
-    }),
+    return { results: patchResults };
+  }),
 });
