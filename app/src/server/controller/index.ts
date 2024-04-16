@@ -270,7 +270,7 @@ export class ServiceHorizontalPodAutoscalerController {
   }
 
   async changeResponseTime(responseTime: number) {
-    console.log(`${this.serviceNamespace}/${this.serviceName} patch HPA: change response time to ${responseTime}`);
+    console.log(`${this.serviceNamespace}/${this.serviceName} update HPA`);
     return kube.api.autoscaling.patchNamespacedHorizontalPodAutoscaler(
       this.horizontalPodAutoscalers?.[0].metadata?.name!,
       this.serviceNamespace,

@@ -8,6 +8,7 @@ export interface Node {
   type: NodeType;
   name: string;
   namespace: string;
+  idle: boolean;
   edges: Edge[];
 }
 

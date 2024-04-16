@@ -96,6 +96,6 @@ export const applicationRouter = router({
     }
   }),
   testPrometheus: procedure.input(z.string()).mutation(async ({ input: query }) => {
-    return prometheus.pql(query);
+    return prometheus.query({ query });
   }),
 });
