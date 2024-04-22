@@ -17,7 +17,7 @@ export function Main() {
   } = trpc.serviceConfig.get.useQuery(undefined, {
     refetchInterval: 1000 * 15,
   });
-  const { mutateAsync } = trpc.serviceConfig.patch.useMutation({
+  const { mutateAsync, isPending } = trpc.serviceConfig.patch.useMutation({
     onSettled(data, error, variables, context) {
       refetchServiceConfig();
     },
@@ -70,9 +70,17 @@ export function Main() {
     : null;
 
   return (
-    <div className="flex flex-row flex-wrap min-h-[100vh] w-[80%] mx-auto justify-center items-start py-6 space-y-6">
-      {isError ? errorComponent : config == undefined ? <Loading /> : contentComponent}
-      {config != undefined && serverData != undefined && userModified && (
+    <div className="flex flex-row flex-wrap min-h-[100vh] w-[80%] mx-auto justify-center items-center py-6 space-y-6">
+      {isError ? (
+        errorComponent
+      ) : config == undefined || isPending ? (
+        <div className="w-full flex justify-center">
+          <Loading size="3rem" />
+        </div>
+      ) : (
+        contentComponent
+      )}
+      {config != undefined && serverData != undefined && userModified && !isPending && (
         <Button
           onClick={() => {
             mutateAsync(generatePatchConfigs(serverData, config));
