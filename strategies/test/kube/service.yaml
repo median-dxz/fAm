@@ -15,7 +15,7 @@ spec:
             restartPolicy: Always
             containers:
                 - name: test-strategy-instance
-                  image: mediandxz/fam-strategy/test:latest
+                  image: mediandxz/fam-strategy:test-latest
                   resources:
                       limits:
                           memory: "256Mi"
@@ -28,18 +28,6 @@ spec:
                       privileged: false
                       runAsUser: 1001
                       runAsGroup: 1001
-                  livenessProbe:
-                      httpGet:
-                          path: /
-                          port: 3002
-                      initialDelaySeconds: 10
-                      timeoutSeconds: 10
-                  readinessProbe:
-                      httpGet:
-                          path: /
-                          port: 3002
-                      initialDelaySeconds: 10
-                      timeoutSeconds: 10
 ---
 apiVersion: v1
 kind: Service
