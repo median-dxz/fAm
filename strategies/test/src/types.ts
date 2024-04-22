@@ -7,7 +7,7 @@ export interface StrategyQueryRequset {
 export interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
-    result: {
+    result?: {
         cpuUtilization: number;
     };
 }

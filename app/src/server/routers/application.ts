@@ -2,6 +2,7 @@ import { ApplicationSettingKeys, settingManager } from "@/server/setting-manager
 import { z } from "zod";
 import { kube } from "../client/kubernetes";
 import { prometheus } from "../client/prometheus";
+import { strategyService } from "../client/strategy";
 import { procedure, router } from "../trpc";
 
 export interface ApplicationStatus {
@@ -50,8 +51,8 @@ const getStatus = procedure.query<ApplicationStatus>(async () => {
     clusterConnected,
     prometheusUrl: prometheus.url,
     prometheusConnected,
-    clusterConnectError: null,
-    prometheusConnectError: null,
+    clusterConnectError,
+    prometheusConnectError,
   };
 });
 
@@ -88,12 +89,7 @@ export const applicationRouter = router({
   getSetting,
   patchSetting,
   testStrategyService: procedure.input(z.string().url()).mutation(async ({ input: url }) => {
-    try {
-      await fetch(url);
-      return { success: true, message: "测试成功" };
-    } catch (error) {
-      return { success: false, message: (error as Error).message };
-    }
+    return strategyService.test(url);
   }),
   testPrometheus: procedure.input(z.string()).mutation(async ({ input: query }) => {
     return prometheus.query({ query });

@@ -13,7 +13,7 @@
 
 > POST 
 >
-> /strategy/api/v1/queryc
+> /strategy/api/v1/query
 >
 > Content-Type: application/json
 
@@ -33,7 +33,7 @@ interface StrategyQueryRequset {
 interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
-    result: {
+    result?: {
         cpuUtilization: number;
     };
 }

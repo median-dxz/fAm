@@ -104,8 +104,8 @@ function StrategyServiceSettings({ setting, mutation }: StrategyServiceSettingsP
                 setDialogOpen(true);
                 setDialogStatus({
                   title: "Strategy Service Test",
-                  message: testResult.message ?? "",
-                  success: testResult.success ?? false,
+                  message: testResult ? "测试成功" : "测试失败",
+                  success: testResult ?? false,
                 });
               }}
             >
@@ -120,7 +120,6 @@ function StrategyServiceSettings({ setting, mutation }: StrategyServiceSettingsP
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} static={true} className="z-[100]">
         <DialogPanel className="max-w-sm">
           <p className="text-tremor-title text-tremor-content-strong font-bold mb-4">{dialogStatus.title}</p>
-          <p className="text-tremor-content-emphasis mb-4">操作{dialogStatus.success ? "成功" : "失败"}</p>
           <p className="text-tremor-content-emphasis mb-4">{dialogStatus.message}</p>
           <Button variant="light" className="mx-auto flex items-center" onClick={() => setDialogOpen(false)}>
             关闭

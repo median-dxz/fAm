@@ -1,7 +1,7 @@
 import { kube } from "@/server/client/kubernetes";
 import { HttpError, V2HorizontalPodAutoscaler, type V1ServiceSpec } from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
-import { settingManager } from "../setting-manager";
+import { strategyService } from "../client/strategy";
 import type { HpaPatchRequest, HpaState, ServiceQuery, WorkloadRef, WorkloadStatus } from "./type";
 
 const FamHpaCtrlLabel = { "app.kubernetes.io/managed-by": "fam-autoscaler-controller" };
@@ -70,18 +70,6 @@ export async function getWorkloadsByServiceSpec(serviceSpec: V1ServiceSpec): Pro
   ).then((workloads) => {
     return Array.from(new Set(workloads.map((w) => stringify(w)))).map((w) => JSON.parse(w) as WorkloadRef);
   });
-}
-
-async function getCPUUtilizationFromStrategyService(responseTime: number) {
-  const { url } = await settingManager.getItme("strategyService");
-  try {
-    const r = await fetch(url, {
-      body: JSON.stringify({
-        responseTime,
-      }),
-    });
-  } catch (error) {}
-  return 50;
 }
 
 export class ServiceHorizontalPodAutoscalerController {
@@ -156,6 +144,23 @@ export class ServiceHorizontalPodAutoscalerController {
     }
     const respnseTimeAnnotation = metadata?.annotations?.["response-time"];
     return respnseTimeAnnotation ? Number(respnseTimeAnnotation) : undefined;
+  }
+
+  async getCPUUtilizationFromStrategyService(responseTime: number) {
+    if (this.hpaStatus !== "configured") {
+      throw new Error(`Cannot get CPU Utilization: ${this.hpaStatus}`);
+    }
+    const hpaMetadata = this.horizontalPodAutoscalers![0].metadata!;
+    const { success, result, error } = await strategyService.query({
+      responseTime,
+      hpa: hpaMetadata.name ?? "",
+      namespace: hpaMetadata.namespace ?? "default",
+    });
+    if (success) {
+      return result!.cpuUtilization;
+    } else {
+      throw new Error(`Failed to fetch CPU Utilization from strategy serivce: ${error}`);
+    }
   }
 
   static async fromServiceQueries(queries?: ServiceQuery[]) {
@@ -288,7 +293,7 @@ export class ServiceHorizontalPodAutoscalerController {
                 name: "cpu",
                 target: {
                   type: "Utilization",
-                  averageUtilization: await getCPUUtilizationFromStrategyService(responseTime),
+                  averageUtilization: await this.getCPUUtilizationFromStrategyService(responseTime),
                 },
               },
             },
@@ -337,7 +342,7 @@ export class ServiceHorizontalPodAutoscalerController {
               name: "cpu",
               target: {
                 type: "Utilization",
-                averageUtilization: await getCPUUtilizationFromStrategyService(responseTime),
+                averageUtilization: await this.getCPUUtilizationFromStrategyService(responseTime),
               },
             },
           },
