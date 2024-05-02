@@ -1,3 +1,4 @@
+import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
 import { settingManager } from "../setting-manager";
 
 export const strategyService = {
@@ -47,17 +48,3 @@ export const strategyService = {
       });
   },
 };
-
-export interface StrategyQueryRequset {
-  hpa: string;
-  namespace: string;
-  responseTime: number;
-}
-
-export interface StrategyQueryResponse {
-  success: boolean;
-  error?: unknown;
-  result?: {
-    cpuUtilization: number;
-  };
-}

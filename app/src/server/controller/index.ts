@@ -146,15 +146,25 @@ export class ServiceHorizontalPodAutoscalerController {
     return respnseTimeAnnotation ? Number(respnseTimeAnnotation) : undefined;
   }
 
-  async getCPUUtilizationFromStrategyService(responseTime: number) {
-    if (this.hpaStatus !== "configured") {
-      throw new Error(`Cannot get CPU Utilization: ${this.hpaStatus}`);
+  async getCPUUtilizationFromStrategyService(responseTime: number, hpaName?: string, hpaNamespace?: string) {
+    if (
+      this.hpaStatus === "workload-not-found" ||
+      this.hpaStatus === "workload-not-supported" ||
+      this.hpaStatus === "multiple-workload"
+    ) {
+      throw new Error(`Cannot query CPU Utilization: ${this.hpaStatus}`);
     }
-    const hpaMetadata = this.horizontalPodAutoscalers![0].metadata!;
     const { success, result, error } = await strategyService.query({
       responseTime,
-      hpa: hpaMetadata.name ?? "",
-      namespace: hpaMetadata.namespace ?? "default",
+      hpa: {
+        name: hpaName ?? "",
+        namespace: hpaNamespace ?? "default",
+      },
+      workload: {
+        name: this.workloads![0].name,
+        namespace: this.workloads![0].namespace,
+        kind: this.workloads![0].kind as "Deployment" | "StatefulSet",
+      },
     });
     if (success) {
       return result!.cpuUtilization;

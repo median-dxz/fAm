@@ -1,5 +1,5 @@
 import http from "node:http";
-import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
+import type { StrategyQueryRequset, StrategyQueryResponse } from "./types.js";
 
 http.createServer((request, response) => {
     const { headers, method, url } = request;

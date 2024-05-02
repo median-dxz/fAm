@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,scss,json}\"",
-    "prepare": "cd ../ && husky ./frontend/.husky",
+    "prepare": "cd ../ && husky ./app/.husky",
     "prisma:migrate": "dotenv -e .env.local -- prisma migrate dev",
     "prisma:generate": "prisma generate"
   },
@@ -38,6 +38,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/fam-strategy-service-type-1.0.0.tgz",
     "@tailwindcss/forms": "^0.5.7",
     "@types/cytoscape": "^3.21.0",
     "@types/cytoscape-dagre": "^2.3.3",

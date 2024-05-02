@@ -13,8 +13,8 @@ export const prometheus = {
     if (params.time) {
       searchParams.set("time", params.time.toString());
     }
-    console.log(`[Prometheus Client]: query: ${process.env["PROMETHEUS_URL"]}/api/v1/query?${searchParams.toString()}`);
-    return fetch(`${process.env["PROMETHEUS_URL"]}/api/v1/query?${searchParams.toString()}`)
+    console.log(`[Prometheus Client]: query: ${this.url}/api/v1/query?${searchParams.toString()}`);
+    return fetch(`${this.url}/api/v1/query?${searchParams.toString()}`)
       .then((r) => r.json() as Promise<PrometheusQueryResponse<TResultType, TMetric>>)
       .catch(() => {
         throw new Error("Failed to fetch prometheus data");
@@ -33,10 +33,8 @@ export const prometheus = {
       end: params.end.toString(),
       step: params.step.toString(),
     });
-    console.log(
-      `[Prometheus Client]: query range: ${process.env["PROMETHEUS_URL"]}/api/v1/query_range?${searchParams.toString()}`,
-    );
-    return fetch(`${process.env["PROMETHEUS_URL"]}/api/v1/query_range?${searchParams.toString()}`)
+    console.log(`[Prometheus Client]: query range: ${this.url}/api/v1/query_range?${searchParams.toString()}`);
+    return fetch(`${this.url}/api/v1/query_range?${searchParams.toString()}`)
       .then((r) => r.json() as Promise<PrometheusQueryResponse<"matrix", TMetric>>)
       .catch(() => {
         throw new Error("Failed to fetch prometheus data");
