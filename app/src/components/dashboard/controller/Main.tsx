@@ -3,35 +3,18 @@
 import { Loading } from "@/components/common/Loading";
 import type { ServiceConfigQueryResult } from "@/server/controller/type";
 import { trpc } from "@/utils/trpc";
-import { Button, Divider } from "@tremor/react";
-import { produce } from "immer";
-import { useRef, useState } from "react";
+import { Divider } from "@tremor/react";
 import { ConfigCard } from "./ConfigCard";
-import { generatePatchConfigs } from "./generatePatchConfigs";
 
 export function Main() {
   const {
-    data: serverData,
+    data: config,
     refetch: refetchServiceConfig,
     error,
     isError,
   } = trpc.serviceConfig.get.useQuery(undefined, {
-    refetchInterval: 1000 * 15,
+    refetchInterval: 15 * 1000,
   });
-  const { mutateAsync, isPending } = trpc.serviceConfig.patch.useMutation({
-    onSettled(data, error, variables, context) {
-      refetchServiceConfig();
-    },
-  });
-  const [config, setConfig] = useState<ServiceConfigQueryResult[] | undefined>(serverData);
-  const [userModified, setUserModified] = useState(false);
-  const previousSetting = useRef(serverData);
-
-  if (previousSetting.current !== serverData) {
-    previousSetting.current = serverData;
-    setConfig(serverData);
-    setUserModified(false);
-  }
 
   const configByGroup = config?.reduce(
     (acc, c) => {
@@ -48,25 +31,7 @@ export function Main() {
 
   const contentComponent = configByGroup
     ? Object.entries(configByGroup).map(([namespace, configs]) => (
-        <ConfigCardGroup
-          key={namespace}
-          namespace={namespace}
-          configs={configs}
-          onChange={(newValue: ServiceConfigQueryResult[]) => {
-            setUserModified(true);
-            setConfig(
-              produce((draft) => {
-                if (!draft) return;
-                newValue.forEach((newConfig) => {
-                  const index = draft.findIndex(
-                    (c) => c.serviceName === newConfig.serviceName && c.serviceNamespace === newConfig.serviceNamespace,
-                  );
-                  draft[index] = newConfig;
-                });
-              }),
-            );
-          }}
-        />
+        <ConfigCardGroup key={namespace} namespace={namespace} configs={configs} onChange={refetchServiceConfig} />
       ))
     : null;
 
@@ -74,21 +39,12 @@ export function Main() {
     <div className="flex flex-row flex-wrap min-h-[100vh] w-[80%] mx-auto justify-center items-center py-6 space-y-6">
       {isError ? (
         errorComponent
-      ) : config == undefined || isPending ? (
+      ) : config == undefined ? (
         <div className="w-full flex justify-center">
           <Loading size="3rem" />
         </div>
       ) : (
         contentComponent
-      )}
-      {config != undefined && serverData != undefined && userModified && !isPending && (
-        <Button
-          onClick={() => {
-            mutateAsync(generatePatchConfigs(serverData, config));
-          }}
-        >
-          Save
-        </Button>
       )}
     </div>
   );
@@ -97,7 +53,7 @@ export function Main() {
 interface ConfigCardGroupProps {
   namespace: string;
   configs: ServiceConfigQueryResult[];
-  onChange: (newValue: ServiceConfigQueryResult[]) => void;
+  onChange: () => void;
 }
 
 function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps) {
@@ -108,18 +64,7 @@ function ConfigCardGroup({ namespace, configs, onChange }: ConfigCardGroupProps)
       <div className="flex flex-col gap-4">
         {configs.map((config) => {
           return (
-            <ConfigCard
-              key={`${config.serviceNamespace}-${config.serviceName}`}
-              config={config}
-              onChange={(newConfig) => {
-                onChange(
-                  produce(configs, (draft) => {
-                    const index = draft.findIndex((c) => c.serviceName === config.serviceName);
-                    draft[index] = { ...draft[index], ...newConfig };
-                  }),
-                );
-              }}
-            />
+            <ConfigCard key={`${config.serviceNamespace}-${config.serviceName}`} config={config} onChange={onChange} />
           );
         })}
       </div>
