@@ -24,7 +24,7 @@ export function Main() {
     length: 5,
   });
 
-  const [autoRefetch, setAutoRefetch] = useState<number>(15);
+  const [autoRefetch, setAutoRefetch] = useState<number>(0);
   const [showIdleNodes, setShowIdleNodes] = useState<boolean>(false);
   const [evaluatedTime, setEvaluatedTime] = useState<number | undefined>(undefined);
   const [serviceSelector, setServiceSelector] = useState<{ name: string; namespace: string } | undefined>(undefined);

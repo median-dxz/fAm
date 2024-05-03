@@ -60,6 +60,8 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
   }, [config.hpaState, config.workloadStatus]);
 
   useEffect(() => {
+    setReplicasData([]);
+    setUtilizationData([]);
     addResouceData();
     let timer = window.setInterval(() => {
       addResouceData();
@@ -141,7 +143,6 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                       className="h-36 w-56"
                       showLegend={false}
                       showTooltip={false}
-                      startEndOnly
                     />
                   </div>
                   <div className="relative">
@@ -154,7 +155,6 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                       colors={["blue", "cyan"]}
                       className="h-36 w-56"
                       showLegend={false}
-                      startEndOnly
                     />
                   </div>
                 </>
