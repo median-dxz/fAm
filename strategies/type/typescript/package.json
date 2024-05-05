@@ -1,7 +1,7 @@
 {
   "name": "@fam/strategy-service-type",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "",
   "type": "module",
   "main": "index.js",

@@ -6,7 +6,7 @@ export interface StrategyQueryRequset {
     workload: {
         name: string;
         namespace: string;
-        kind: "Deployment" | "StatefulSet";
+        kind: "Deployment";
     };
     responseTime: number;
 }
@@ -15,6 +15,6 @@ export interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
     result?: {
-        cpuResource: number;
+        cpuResource: number; // cpu资源，绝对量，分度为m
     };
 }
