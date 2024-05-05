@@ -15,6 +15,6 @@ export interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
     result?: {
-        cpuUtilization: number;
+        cpuResource: number;
     };
 }
