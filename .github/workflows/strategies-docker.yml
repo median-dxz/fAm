@@ -1,4 +1,4 @@
-name: Docker CI - Build & Push
+name: Strategies - Docker CI
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: mediandxz/fam
+  IMAGE_NAME: mediandxz/fam-strategy
 
 jobs:
   docker:
@@ -30,11 +30,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push
+        name: Build and push - test
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}:app"
+          context: "{{defaultContext}}:strategies:test"
           push: true
-          tags: mediandxz/fam:latest
-          cache-from: type=registry,ref=mediandxz/fam:latest
+          tags: mediandxz/fam-strategy:test-latest
+          cache-from: type=registry,ref=mediandxz/fam-strategy:test-latest
+          cache-to: type=inline
+      -
+        name: Build and push - dnn
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:strategies:dnn"
+          push: true
+          tags: mediandxz/fam-strategy:dnn-latest
+          cache-from: type=registry,ref=mediandxz/fam:dnn-latest
           cache-to: type=inline
