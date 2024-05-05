@@ -33,7 +33,7 @@ jobs:
         name: Build and push - test
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}:strategies:test"
+          context: "{{defaultContext}}:strategies/test"
           push: true
           tags: mediandxz/fam-strategy:test-latest
           cache-from: type=registry,ref=mediandxz/fam-strategy:test-latest
@@ -42,7 +42,7 @@ jobs:
         name: Build and push - dnn
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}:strategies:dnn"
+          context: "{{defaultContext}}:strategies/dnn"
           push: true
           tags: mediandxz/fam-strategy:dnn-latest
           cache-from: type=registry,ref=mediandxz/fam:dnn-latest
