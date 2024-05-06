@@ -1,5 +1,5 @@
 {
-  "name": "dnn",
+  "name": "feedback",
   "version": "1.0.0",
   "type": "module",
   "description": "",
@@ -13,12 +13,12 @@
   "packageManager": "pnpm@9.1.0",
   "devDependencies": {
     "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz",
-    "@types/node": "^20.12.8",
-    "onnxruntime-common": "^1.17.3",
+    "@types/node": "^20.12.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "onnxruntime-node": "1.17.3-rev.1"
+    "@kubernetes/client-node": "^0.21.0",
+    "dotenv": "^16.4.5"
   }
 }

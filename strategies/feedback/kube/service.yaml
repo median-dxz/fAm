@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: test-strategy-deployment
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app.kubernetes.io/name: fam-test-strategy
+    template:
+        metadata:
+            labels:
+                app.kubernetes.io/name: fam-test-strategy
+        spec:
+            restartPolicy: Always
+            containers:
+                - name: test-strategy-instance
+                  image: mediandxz/fam-strategy:feedback-latest
+                  resources:
+                      limits:
+                          memory: "256Mi"
+                          cpu: "0.5"
+                  ports:
+                      - containerPort: 3002
+                  imagePullPolicy: Always
+                  securityContext:
+                      allowPrivilegeEscalation: false
+                      privileged: false
+                      runAsUser: 1001
+                      runAsGroup: 1001
+                  envFrom:
+                      - configMapRef:
+                            name: strategy-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: test-strategy-service
+spec:
+    selector:
+        app.kubernetes.io/name: fam-test-strategy
+    ports:
+        - port: 3002
+          targetPort: 3002
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: strategy-service-account

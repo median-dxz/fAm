@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: strategy-service-config
+data:
+    PROMETHEUS_URL: "http://prometheus.istio-system:9090"
+    FAM_CONTROLLER_URL: "http://fam-service.fam-ns:3000"

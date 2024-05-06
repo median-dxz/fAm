@@ -16,6 +16,10 @@ export interface StrategyQueryRequset {
 }
 
 export interface StrategyQueryResponse {
+    service: {
+        name: string;
+        namespace: string;
+    };
     success: boolean;
     error?: unknown;
     result?: {

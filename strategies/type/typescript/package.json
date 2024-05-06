@@ -1,7 +1,7 @@
 {
   "name": "@fam/strategy-service-type",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "",
   "type": "module",
   "main": "index.js",
@@ -13,5 +13,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@9.0.6+sha256.0624e30eff866cdeb363b15061bdb7fd9425b17bc1bb42c22f5f4efdea21f6b3"
+  "packageManager": "pnpm@9.1.0"
 }

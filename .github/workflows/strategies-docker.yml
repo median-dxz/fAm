@@ -47,3 +47,12 @@ jobs:
           tags: mediandxz/fam-strategy:dnn-latest
           cache-from: type=registry,ref=mediandxz/fam:dnn-latest
           cache-to: type=inline
+      -
+        name: Build and push - dnn
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:strategies/feedback"
+          push: true
+          tags: mediandxz/fam-strategy:feedback-latest
+          cache-from: type=registry,ref=mediandxz/fam:feedback-latest
+          cache-to: type=inline
