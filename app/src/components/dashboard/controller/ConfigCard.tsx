@@ -12,25 +12,25 @@ interface ConfigCardProps {
   onChange: (newConfig: { responseTime?: number }) => void;
 }
 
-interface ReplicasData {
+interface ResourceData {
   timestamp: string;
-  currentReplicas: number;
-  targetReplicas: number;
+  current: number;
+  target: number;
+  parameter: "%" | "" | "m";
 }
 
-interface UtilizationData {
-  timestamp: string;
-  currentUtilizationPercentage: number;
-  targetUtilizationPercentage: number;
-}
+const currentText = (data?: ResourceData) =>
+  data ? `${data.current}${data.parameter} / ${data.target}${data.parameter}` : "";
 
 export function ConfigCard({ config, onChange }: ConfigCardProps) {
-  const [replicasData, setReplicasData] = useState<ReplicasData[]>([]);
-  const [utilizationData, setUtilizationData] = useState<UtilizationData[]>([]);
+  const [replicasData, setReplicasData] = useState<ResourceData[]>([]);
+  const [cpuData, setCpuData] = useState<ResourceData[]>([]);
   const [responseTime, setResponseTime] = useState<number | undefined>();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { mutateAsync, isPending } = trpc.serviceConfig.patch.useMutation();
+  const resourceType = config.workloadStatus?.currentAverageValue ? "Average Value" : "Utilization";
+
+  const { mutateAsync, isPending, error } = trpc.serviceConfig.patch.useMutation();
 
   const addResouceData = useCallback(() => {
     if (config.hpaState !== "configured") {
@@ -40,28 +40,59 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
       produce((draft) => {
         if (draft.length > 20) draft.splice(0, Math.max(0, draft.length - 20));
         draft.push({
-          currentReplicas: config.workloadStatus?.currentReplicas ?? NaN,
-          targetReplicas: config.workloadStatus?.targetReplicas ?? NaN,
+          current: config.workloadStatus?.currentReplicas ?? NaN,
+          target: config.workloadStatus?.targetReplicas ?? NaN,
           timestamp: dayjs().format("HH:mm:ss"),
+          parameter: "",
         });
       }),
     );
 
-    setUtilizationData(
+    setCpuData(
       produce((draft) => {
         if (draft.length > 20) draft.splice(0, Math.max(0, draft.length - 20));
-        draft.push({
-          currentUtilizationPercentage: config.workloadStatus?.currentUtilizationPercentage ?? NaN,
-          targetUtilizationPercentage: config.workloadStatus?.targetUtilizationPercentage ?? NaN,
-          timestamp: dayjs().format("HH:mm:ss"),
-        });
+        if (resourceType === "Utilization") {
+          draft.push({
+            current: config.workloadStatus?.currentUtilizationPercentage ?? NaN,
+            target: config.workloadStatus?.targetUtilizationPercentage ?? NaN,
+            timestamp: dayjs().format("HH:mm:ss"),
+            parameter: "%",
+          });
+        } else {
+          let current = NaN;
+          let target = NaN;
+          const parameter = "m";
+
+          if (config.workloadStatus?.currentAverageValue) {
+            if (config.workloadStatus.currentAverageValue.endsWith("m")) {
+              current = Number(config.workloadStatus.currentAverageValue.slice(0, -1));
+            } else {
+              current = Number(config.workloadStatus.currentAverageValue);
+            }
+          }
+
+          if (config.workloadStatus?.targetAverageValue) {
+            if (config.workloadStatus.targetAverageValue.endsWith("m")) {
+              target = Number(config.workloadStatus.targetAverageValue.slice(0, -1));
+            } else {
+              target = Number(config.workloadStatus.targetAverageValue);
+            }
+          }
+
+          draft.push({
+            current,
+            target,
+            timestamp: dayjs().format("HH:mm:ss"),
+            parameter,
+          });
+        }
       }),
     );
-  }, [config.hpaState, config.workloadStatus]);
+  }, [config.hpaState, config.workloadStatus, resourceType]);
 
   useEffect(() => {
     setReplicasData([]);
-    setUtilizationData([]);
+    setCpuData([]);
     addResouceData();
     let timer = window.setInterval(() => {
       addResouceData();
@@ -96,12 +127,9 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
         {config.hpaState === "configured" ? (
           <>
             <span className="whitespace-nowrap text-tremor-content mr-4">
-              Replicas: {replicasData.at(-1)?.currentReplicas} / {replicasData.at(-1)?.targetReplicas}
+              Replicas: {currentText(replicasData.at(-1))}
             </span>
-            <span className="whitespace-nowrap text-tremor-content">
-              Utilization: {utilizationData.at(-1)?.currentUtilizationPercentage}% /{" "}
-              {utilizationData.at(-1)?.targetUtilizationPercentage}%
-            </span>
+            <span className="whitespace-nowrap text-tremor-content">CPU: {currentText(cpuData.at(-1))}</span>
           </>
         ) : (
           <div className="inline-block">&nbsp;</div>
@@ -138,7 +166,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                     <AreaChart
                       data={replicasData}
                       index="timestamp"
-                      categories={["currentReplicas", "targetReplicas"]}
+                      categories={["current", "target"]}
                       colors={["blue", "cyan"]}
                       className="h-36 w-56"
                       showLegend={false}
@@ -146,12 +174,18 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                     />
                   </div>
                   <div className="relative">
-                    <h3 className="text-base font-semibold text-tremor-content-strong">Utilization</h3>
+                    <h3 className="text-base font-semibold text-tremor-content-strong">{resourceType}</h3>
                     <AreaChart
-                      data={utilizationData}
-                      valueFormatter={(v) => `${v}%`}
+                      data={cpuData}
+                      valueFormatter={(value) => {
+                        if (resourceType === "Utilization") {
+                          return `${value}%`;
+                        } else {
+                          return `${value}m`;
+                        }
+                      }}
                       index="timestamp"
-                      categories={["currentUtilizationPercentage", "targetUtilizationPercentage"]}
+                      categories={["current", "target"]}
                       colors={["blue", "cyan"]}
                       className="h-36 w-56"
                       showLegend={false}
@@ -199,13 +233,19 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                 className="flex flex-row flex-nowrap"
                 loading={isPending}
                 onClick={async () => {
-                  await mutateAsync([
-                    {
-                      responseTime,
-                      serviceName: config.serviceName,
-                      serviceNamespace: config.serviceNamespace,
-                    },
-                  ]);
+                  try {
+                    await mutateAsync([
+                      {
+                        responseTime,
+                        serviceName: config.serviceName,
+                        serviceNamespace: config.serviceNamespace,
+                      },
+                    ]);
+                  } catch (error) {
+                    // TODO Error Handling
+                    console.error(error);
+                  }
+
                   onChange({ responseTime });
                 }}
               >

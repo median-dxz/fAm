@@ -10,10 +10,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@9.0.4+sha256.caa915eaae9d9aefccf50ee8aeda25a2f8684d8f9d5c6e367eaf176d97c1f89e",
+  "packageManager": "pnpm@9.0.6",
   "devDependencies": {
-    "@types/node": "^20.12.7",
+    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/v1.1.2/fam-strategy-service-type.tgz",
+    "@types/node": "^20.12.8",
+    "onnxruntime-common": "^1.17.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "onnxruntime-node": "1.17.3-rev.1"
   }
 }

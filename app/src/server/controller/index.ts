@@ -1,8 +1,12 @@
 import { kube } from "@/server/client/kubernetes";
-import { HttpError, V2HorizontalPodAutoscaler, type V1ServiceSpec } from "@kubernetes/client-node";
+import type { StrategyQueryRequset } from "@fam/strategy-service-type";
+import { HttpError, V2HorizontalPodAutoscaler, V2MetricSpec, type V1ServiceSpec } from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
 import { strategyService } from "../client/strategy";
 import type { HpaPatchRequest, HpaState, ServiceQuery, WorkloadRef, WorkloadStatus } from "./type";
+
+type SupportedWorkloadKind = StrategyQueryRequset["workload"]["kind"];
+const SupportedWorkloadKinds: SupportedWorkloadKind[] = ["Deployment"] as const;
 
 const FamHpaCtrlLabel = { "app.kubernetes.io/managed-by": "fam-autoscaler-controller" };
 
@@ -91,7 +95,7 @@ export class ServiceHorizontalPodAutoscalerController {
     if (this.workloads.length > 1) {
       return "multiple-workload";
     }
-    if (this.workloads[0].kind !== "Deployment" && this.workloads[0].kind !== "StatefulSet") {
+    if (!(SupportedWorkloadKinds as string[]).includes(this.workloads[0].kind)) {
       return "workload-not-supported";
     }
     if (!this.horizontalPodAutoscalers || this.horizontalPodAutoscalers.length === 0) {
@@ -119,9 +123,11 @@ export class ServiceHorizontalPodAutoscalerController {
     const { metrics } = spec;
     return {
       currentReplicas,
-      currentUtilizationPercentage: currentMetrics?.[0].resource?.current.averageUtilization,
       targetReplicas: desiredReplicas,
+      currentUtilizationPercentage: currentMetrics?.[0].resource?.current.averageUtilization,
       targetUtilizationPercentage: metrics?.[0]?.resource?.target?.averageUtilization,
+      currentAverageValue: currentMetrics?.[0].resource?.current.averageValue,
+      targetAverageValue: metrics?.[0]?.resource?.target?.averageValue,
       conditions: conditions?.map((condition) => {
         const { status, type, message, reason } = condition;
         return {
@@ -146,13 +152,13 @@ export class ServiceHorizontalPodAutoscalerController {
     return respnseTimeAnnotation ? Number(respnseTimeAnnotation) : undefined;
   }
 
-  async getCPUUtilizationFromStrategyService(responseTime: number, hpaName?: string, hpaNamespace?: string) {
+  async getCPUResourceFromStrategyService(responseTime: number, hpaName?: string, hpaNamespace?: string) {
     if (
       this.hpaStatus === "workload-not-found" ||
       this.hpaStatus === "workload-not-supported" ||
       this.hpaStatus === "multiple-workload"
     ) {
-      throw new Error(`Cannot query CPU Utilization: ${this.hpaStatus}`);
+      throw new Error(`Cannot query CPU Resource: ${this.hpaStatus}`);
     }
     const { success, result, error } = await strategyService.query({
       responseTime,
@@ -163,14 +169,30 @@ export class ServiceHorizontalPodAutoscalerController {
       workload: {
         name: this.workloads![0].name,
         namespace: this.workloads![0].namespace,
-        kind: this.workloads![0].kind as "Deployment" | "StatefulSet",
+        kind: this.workloads![0].kind as SupportedWorkloadKind,
       },
     });
     if (success) {
-      return result!.cpuUtilization;
+      return result!.cpuResource;
     } else {
-      throw new Error(`Failed to fetch CPU Utilization from strategy serivce: ${error}`);
+      throw new Error(`Failed to fetch CPU Resource from strategy serivce: ${error}`);
     }
+  }
+
+  static getHorizontalPodAutoscalerPatchObject(cpuResource: number) {
+    return [
+      {
+        type: "Resource",
+        resource: {
+          name: "cpu",
+          target: {
+            // TODO 或许支持用户配置或通过策略服务更改是AverageValue还是Utilization
+            type: "AverageValue",
+            averageValue: cpuResource + "m",
+          },
+        },
+      },
+    ] satisfies V2MetricSpec[];
   }
 
   static async fromServiceQueries(queries?: ServiceQuery[]) {
@@ -286,6 +308,7 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async changeResponseTime(responseTime: number) {
     console.log(`${this.serviceNamespace}/${this.serviceName} update HPA`);
+    const cpuResource = await this.getCPUResourceFromStrategyService(responseTime);
     return kube.api.autoscaling.patchNamespacedHorizontalPodAutoscaler(
       this.horizontalPodAutoscalers?.[0].metadata?.name!,
       this.serviceNamespace,
@@ -296,18 +319,7 @@ export class ServiceHorizontalPodAutoscalerController {
           },
         },
         spec: {
-          metrics: [
-            {
-              type: "Resource",
-              resource: {
-                name: "cpu",
-                target: {
-                  type: "Utilization",
-                  averageUtilization: await this.getCPUUtilizationFromStrategyService(responseTime),
-                },
-              },
-            },
-          ],
+          metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpuResource),
         },
       },
       undefined,
@@ -329,6 +341,7 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async createHpa(responseTime: number) {
     console.log(`${this.serviceNamespace}/${this.serviceName} create HPA`);
+    const cpuResource = await this.getCPUResourceFromStrategyService(responseTime);
     return kube.api.autoscaling.createNamespacedHorizontalPodAutoscaler(this.serviceNamespace, {
       metadata: {
         name: `fam-hpa-${this.serviceName}`,
@@ -345,18 +358,7 @@ export class ServiceHorizontalPodAutoscalerController {
         },
         minReplicas: 1,
         maxReplicas: 10,
-        metrics: [
-          {
-            type: "Resource",
-            resource: {
-              name: "cpu",
-              target: {
-                type: "Utilization",
-                averageUtilization: await this.getCPUUtilizationFromStrategyService(responseTime),
-              },
-            },
-          },
-        ],
+        metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpuResource),
       },
     });
   }

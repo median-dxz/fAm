@@ -15,7 +15,7 @@ spec:
             restartPolicy: Always
             containers:
                 - name: test-strategy-instance
-                  image: mediandxz/fam-strategy:test-latest
+                  image: mediandxz/fam-strategy:dnn-latest
                   resources:
                       limits:
                           memory: "256Mi"

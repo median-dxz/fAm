@@ -8,9 +8,11 @@ export interface ServiceQuery {
 export interface WorkloadStatus {
   //   currentResponseTime: number; // TODO implment this
   currentReplicas?: number;
-  currentUtilizationPercentage?: number;
   targetReplicas?: number;
+  currentUtilizationPercentage?: number;
   targetUtilizationPercentage?: number;
+  currentAverageValue?: string;
+  targetAverageValue?: string;
   conditions?: HorizontalPodAutoscalerCondition[];
 }
 

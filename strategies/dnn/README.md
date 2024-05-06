@@ -1,3 +1,5 @@
-# fAm dnn Strategy
+# fAm test Strategy
 
-使用神经网络构建的简单预测策略，根据集群内的历史数据，针对不同服务进行预训练
+测试用策略服务，使用DNN对CPU使用的资源量进行预测，返回
+
+> CPU = model(SvcTag, ResponseTime) * (1 + LimitRate)

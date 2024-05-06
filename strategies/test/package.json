@@ -10,9 +10,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@9.0.4+sha256.caa915eaae9d9aefccf50ee8aeda25a2f8684d8f9d5c6e367eaf176d97c1f89e",
+  "packageManager": "pnpm@9.0.6",
   "devDependencies": {
-    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/fam-strategy-service-type-1.0.0.tgz",
+    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/v1.1.2/fam-strategy-service-type.tgz",
     "@types/node": "^20.12.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"

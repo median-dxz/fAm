@@ -42,7 +42,7 @@ interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
     result?: {
-        cpuUtilization: number;
+        cpuResource: number; // cpu资源，绝对量，分度为m
     };
 }
 ```
