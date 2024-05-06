@@ -1,6 +1,7 @@
 import http from "node:http";
 import "dotenv/config";
 import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
+import { feedbackLoop } from "./feedbackLoop.js";
 
 http.createServer((request, response) => {
     const { headers, method, url } = request;
@@ -30,15 +31,17 @@ http.createServer((request, response) => {
             ) {
                 const queryResponse: StrategyQueryResponse = {
                     success: true,
-                    result: {
-                        cpuResource: 0,
+                    service: {
+                        name: "",
+                        namespace: "",
                     },
                 };
                 try {
                     const queryRequest: StrategyQueryRequset = JSON.parse(body);
                     console.log(queryRequest);
                     response.statusCode = 200;
-                    queryResponse.result = { cpuResource: queryRequest.responseTime };
+                    queryResponse.result = { cpu: 50, type: "Utilization" };
+                    feedbackLoop.strat(queryRequest);
                 } catch (error) {
                     response.statusCode = 400;
                     queryResponse.success = false;

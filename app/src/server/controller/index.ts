@@ -152,7 +152,7 @@ export class ServiceHorizontalPodAutoscalerController {
     return respnseTimeAnnotation ? Number(respnseTimeAnnotation) : undefined;
   }
 
-  async getCPUResourceFromStrategyService(responseTime: number, hpaName?: string, hpaNamespace?: string) {
+  async getCPUResourceFromStrategyService(responseTime: number, hpaName?: string) {
     if (
       this.hpaStatus === "workload-not-found" ||
       this.hpaStatus === "workload-not-supported" ||
@@ -164,7 +164,7 @@ export class ServiceHorizontalPodAutoscalerController {
       responseTime,
       hpa: {
         name: hpaName ?? "",
-        namespace: hpaNamespace ?? "default",
+        namespace: this.serviceNamespace,
       },
       workload: {
         name: this.workloads![0].name,
@@ -312,7 +312,10 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async changeResponseTime(responseTime: number) {
     console.log(`${this.serviceNamespace}/${this.serviceName} update HPA`);
-    const cpu = await this.getCPUResourceFromStrategyService(responseTime);
+    const cpu = await this.getCPUResourceFromStrategyService(
+      responseTime,
+      this.horizontalPodAutoscalers?.[0].metadata?.name!,
+    );
     return kube.api.autoscaling.patchNamespacedHorizontalPodAutoscaler(
       this.horizontalPodAutoscalers?.[0].metadata?.name!,
       this.serviceNamespace,

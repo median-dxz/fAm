@@ -29,11 +29,17 @@ http.createServer((request, response) => {
             ) {
                 const queryResponse: StrategyQueryResponse = {
                     success: true,
+                    service: {
+                        name: "",
+                        namespace: "",
+                    },
                 };
                 try {
                     const queryRequest: StrategyQueryRequset = JSON.parse(body);
                     console.log(queryRequest);
                     response.statusCode = 200;
+
+                    queryResponse.service = queryRequest.service;
                     queryResponse.result = { cpu: queryRequest.responseTime, type: "Utilization" };
                 } catch (error) {
                     response.statusCode = 400;

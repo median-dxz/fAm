@@ -16,8 +16,8 @@ importers:
         version: 16.4.5
     devDependencies:
       '@fam/strategy-service-type':
-        specifier: https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz
-        version: https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz
+        specifier: https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz
+        version: https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz
       '@types/node':
         specifier: ^20.12.7
         version: 20.12.7
@@ -34,9 +34,9 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
-  '@fam/strategy-service-type@https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz':
-    resolution: {tarball: https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz}
-    version: 2.0.0
+  '@fam/strategy-service-type@https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz':
+    resolution: {tarball: https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz}
+    version: 3.0.0
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -535,7 +535,7 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@fam/strategy-service-type@https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz': {}
+  '@fam/strategy-service-type@https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:

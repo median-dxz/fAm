@@ -76,6 +76,10 @@ http.createServer((request, response) => {
             ) {
                 const queryResponse: StrategyQueryResponse = {
                     success: true,
+                    service: {
+                        name: "",
+                        namespace: "",
+                    },
                 };
                 try {
                     const queryRequest: StrategyQueryRequset = JSON.parse(body);
@@ -86,6 +90,7 @@ http.createServer((request, response) => {
                         workload: { name, namespace },
                         responseTime,
                     } = queryRequest;
+                    queryRequest.service = queryRequest.service;
                     queryResponse.result = { cpu: await predict(namespace, name, responseTime), type: "AverageValue" };
                 } catch (error) {
                     response.statusCode = 400;

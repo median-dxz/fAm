@@ -12,7 +12,7 @@
   "license": "ISC",
   "packageManager": "pnpm@9.1.0",
   "devDependencies": {
-    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/v2.0.0/fam-strategy-service-type.tgz",
+    "@fam/strategy-service-type": "https://github.com/median-dxz/fAm/raw/main/strategies/type/v3.0.0/fam-strategy-service-type.tgz",
     "@types/node": "^20.12.8",
     "onnxruntime-common": "^1.17.3",
     "ts-node": "^10.9.2",
