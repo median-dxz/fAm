@@ -111,7 +111,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
         {config.serviceName}
       </p>
       <Legend
-        className="w-40 flex-none"
+        className="w-36 flex-none whitespace-nowrap text-ellipsis overflow-clip hover:overflow-visible"
         categories={[config.hpaState]}
         colors={[
           config.hpaState === "configured"

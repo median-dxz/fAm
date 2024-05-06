@@ -1,5 +1,5 @@
 import { kube } from "@/server/client/kubernetes";
-import type { StrategyQueryRequset } from "@fam/strategy-service-type";
+import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
 import { HttpError, V2HorizontalPodAutoscaler, V2MetricSpec, type V1ServiceSpec } from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
 import { strategyService } from "../client/strategy";
@@ -171,24 +171,28 @@ export class ServiceHorizontalPodAutoscalerController {
         namespace: this.workloads![0].namespace,
         kind: this.workloads![0].kind as SupportedWorkloadKind,
       },
+      service: {
+        name: this.serviceName,
+        namespace: this.serviceNamespace,
+      },
     });
     if (success) {
-      return result!.cpuResource;
+      return result!;
     } else {
       throw new Error(`Failed to fetch CPU Resource from strategy serivce: ${error}`);
     }
   }
 
-  static getHorizontalPodAutoscalerPatchObject(cpuResource: number) {
+  static getHorizontalPodAutoscalerPatchObject({ cpu, type }: NonNullable<StrategyQueryResponse["result"]>) {
     return [
       {
         type: "Resource",
         resource: {
           name: "cpu",
           target: {
-            // TODO 或许支持用户配置或通过策略服务更改是AverageValue还是Utilization
-            type: "AverageValue",
-            averageValue: cpuResource + "m",
+            type,
+            averageValue: type === "AverageValue" ? cpu + "m" : undefined,
+            averageUtilization: type === "Utilization" ? cpu : undefined,
           },
         },
       },
@@ -308,7 +312,7 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async changeResponseTime(responseTime: number) {
     console.log(`${this.serviceNamespace}/${this.serviceName} update HPA`);
-    const cpuResource = await this.getCPUResourceFromStrategyService(responseTime);
+    const cpu = await this.getCPUResourceFromStrategyService(responseTime);
     return kube.api.autoscaling.patchNamespacedHorizontalPodAutoscaler(
       this.horizontalPodAutoscalers?.[0].metadata?.name!,
       this.serviceNamespace,
@@ -319,7 +323,7 @@ export class ServiceHorizontalPodAutoscalerController {
           },
         },
         spec: {
-          metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpuResource),
+          metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
         },
       },
       undefined,
@@ -341,7 +345,7 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async createHpa(responseTime: number) {
     console.log(`${this.serviceNamespace}/${this.serviceName} create HPA`);
-    const cpuResource = await this.getCPUResourceFromStrategyService(responseTime);
+    const cpu = await this.getCPUResourceFromStrategyService(responseTime);
     return kube.api.autoscaling.createNamespacedHorizontalPodAutoscaler(this.serviceNamespace, {
       metadata: {
         name: `fam-hpa-${this.serviceName}`,
@@ -358,7 +362,7 @@ export class ServiceHorizontalPodAutoscalerController {
         },
         minReplicas: 1,
         maxReplicas: 10,
-        metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpuResource),
+        metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
       },
     });
   }

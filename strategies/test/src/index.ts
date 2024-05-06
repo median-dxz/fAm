@@ -29,15 +29,12 @@ http.createServer((request, response) => {
             ) {
                 const queryResponse: StrategyQueryResponse = {
                     success: true,
-                    result: {
-                        cpuResource: 0,
-                    },
                 };
                 try {
                     const queryRequest: StrategyQueryRequset = JSON.parse(body);
                     console.log(queryRequest);
                     response.statusCode = 200;
-                    queryResponse.result = { cpuResource: queryRequest.responseTime };
+                    queryResponse.result = { cpu: queryRequest.responseTime, type: "Utilization" };
                 } catch (error) {
                     response.statusCode = 400;
                     queryResponse.success = false;

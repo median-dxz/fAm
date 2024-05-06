@@ -30,6 +30,7 @@ export const strategyService = {
     if (url.endsWith("/")) {
       url = url.slice(0, -1);
     }
+    // TODO 要求提供专门的测试端点，而不是拿实际端点测试
     return fetch(`${url}/strategy/api/v1/query`, {
       method: "POST",
       headers: {
@@ -44,6 +45,10 @@ export const strategyService = {
           kind: "Deployment",
           name: "test",
           namespace: "default",
+        },
+        service: {
+          namespace: "default",
+          name: "test",
         },
         responseTime: 100,
       } satisfies StrategyQueryRequset),
