@@ -23,8 +23,8 @@ async function predict(namespace: string, workload: string, response: number) {
         throw new Error("session is not initialized");
     }
     const workloadLabel = workloadMappings[`${namespace}.${workload}`];
-    if (!workloadLabel) {
-        throw new Error(`service ${namespace}.${workload} is not found in service mappings.`);
+    if (workloadLabel == undefined) {
+        throw new Error(`workload ${namespace}.${workload} is not found in service mappings.`);
     }
 
     // prepare inputs. a tensor need its corresponding TypedArray as data
