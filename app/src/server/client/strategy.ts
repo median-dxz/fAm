@@ -36,10 +36,17 @@ export const strategyService = {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        hpa: "test",
-        namespace: "default",
+        hpa: {
+          namespace: "default",
+          name: "test",
+        },
+        workload: {
+          kind: "Deployment",
+          name: "test",
+          namespace: "default",
+        },
         responseTime: 100,
-      }),
+      } satisfies StrategyQueryRequset),
     })
       .then((r) => r.ok && r.status === 200)
       .catch((error) => {
