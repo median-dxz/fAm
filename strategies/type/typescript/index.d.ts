@@ -8,6 +8,10 @@ export interface StrategyQueryRequset {
         namespace: string;
         kind: "Deployment";
     };
+    service: {
+        name: string;
+        namespace: string;
+    };
     responseTime: number;
 }
 
@@ -15,6 +19,7 @@ export interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
     result?: {
-        cpuResource: number; // cpu资源，绝对量，分度为m
+        cpu: number;
+        type: "Utilization" | "AverageValue"; // 绝对量分度为m
     };
 }

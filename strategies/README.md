@@ -28,21 +28,25 @@ interface StrategyQueryRequset {
     workload: {
         name: string;
         namespace: string;
-        kind: "Deployment" | "StatefulSet";
+        kind: "Deployment";
+    };
+    service: {
+        name: string;
+        namespace: string;
     };
     responseTime: number;
 }
-
 ```
 
 3. 返回值
 
 ```typescript
-interface StrategyQueryResponse {
+export interface StrategyQueryResponse {
     success: boolean;
     error?: unknown;
     result?: {
-        cpuResource: number; // cpu资源，绝对量，分度为m
+        cpu: number;
+        type: "Utilization" | "AverageValue"; // 绝对量分度为m
     };
 }
 ```
