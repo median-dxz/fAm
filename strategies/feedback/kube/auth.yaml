@@ -22,3 +22,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: strategy-service-account
+    namespace: default
