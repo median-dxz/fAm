@@ -28,7 +28,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
   const [responseTime, setResponseTime] = useState<number | undefined>();
   const [isOpen, setIsOpen] = useState(false);
 
-  const resourceType = config.workloadStatus?.currentAverageValue ? "Average Value" : "Utilization";
+  const resourceType = config.workloadStatus?.targetAverageValue != undefined ? "Average Value" : "Utilization";
 
   const { mutateAsync, isPending, error } = trpc.serviceConfig.patch.useMutation();
 
@@ -91,8 +91,6 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
   }, [config.hpaState, config.workloadStatus, resourceType]);
 
   useEffect(() => {
-    setReplicasData([]);
-    setCpuData([]);
     addResouceData();
     let timer = window.setInterval(() => {
       addResouceData();

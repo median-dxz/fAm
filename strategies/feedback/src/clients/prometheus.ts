@@ -3,18 +3,21 @@ export const prometheus = {
         return process.env["PROMETHEUS_URL"];
     },
 
-    async query<TMetric extends object, TResultType extends ResultType>(params: {
-        query: string;
-        time?: string | number;
-    }) {
+    async query<TMetric extends object, TResultType extends ResultType>(
+        params: {
+            query: string;
+            time?: string | number;
+        },
+        fetchOptions?: RequestInit
+    ) {
         const searchParams = new URLSearchParams({
             query: params.query,
         });
         if (params.time) {
             searchParams.set("time", params.time.toString());
         }
-        console.log(`[Prometheus Client]: query: ${this.url}/api/v1/query?${searchParams.toString()}`);
-        return fetch(`${this.url}/api/v1/query?${searchParams.toString()}`)
+        // console.log(`[Prometheus Client]: query: ${this.url}/api/v1/query?${searchParams.toString()}`);
+        return fetch(`${this.url}/api/v1/query?${searchParams.toString()}`, fetchOptions)
             .then((r) => r.json() as Promise<PrometheusQueryResponse<TResultType, TMetric>>)
             .catch(() => {
                 throw new Error("Failed to fetch prometheus data");
@@ -59,41 +62,3 @@ export type PrometheusQueryResponse<TResultType extends ResultType, TMetric exte
 
 export type ResultType = "matrix" | "vector" | "scalar" | "string";
 export type MetricValue = [number, string];
-
-export interface IstioRequestsTotalMetric {
-    __name__: string;
-    app: string;
-    connection_security_policy: string;
-    destination_app: string;
-    destination_canonical_revision: string;
-    destination_canonical_service: string;
-    destination_cluster: string;
-    destination_principal: string;
-    destination_service: string;
-    destination_service_name: string;
-    destination_service_namespace: string;
-    destination_version: string;
-    destination_workload: string;
-    destination_workload_namespace: string;
-    instance: string;
-    job: string;
-    namespace: string;
-    pod: string;
-    pod_template_hash: string;
-    reporter: string;
-    request_protocol: string;
-    response_code: string;
-    response_flags: string;
-    security_istio_io_tlsMode: string;
-    service_istio_io_canonical_name: string;
-    service_istio_io_canonical_revision: string;
-    source_app: string;
-    source_canonical_revision: string;
-    source_canonical_service: string;
-    source_cluster: string;
-    source_principal: string;
-    source_version: string;
-    source_workload: string;
-    source_workload_namespace: string;
-    version: string;
-}

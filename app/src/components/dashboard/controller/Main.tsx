@@ -14,6 +14,7 @@ export function Main() {
     isError,
   } = trpc.serviceConfig.get.useQuery(undefined, {
     refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: true,
   });
 
   const configByGroup = config?.reduce(

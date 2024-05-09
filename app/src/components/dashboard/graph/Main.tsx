@@ -44,6 +44,7 @@ export function Main() {
 
   const { data: serviceConfig, refetch: refetchServiceConfig } = trpc.serviceConfig.get.useQuery(undefined, {
     refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: true,
   });
 
   let serviceConfigItem;

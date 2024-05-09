@@ -1,6 +1,8 @@
 import http from "node:http";
 import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
 
+const PORT = process.env.PORT || 3002;
+
 http.createServer((request, response) => {
     const { headers, method, url } = request;
     let chunks: any[] = [];
@@ -53,4 +55,4 @@ http.createServer((request, response) => {
                 response.end(JSON.stringify({ error: "Not Found" }));
             }
         });
-}).listen(3002);
+}).listen(PORT);

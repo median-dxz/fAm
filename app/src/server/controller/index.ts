@@ -184,6 +184,7 @@ export class ServiceHorizontalPodAutoscalerController {
   }
 
   static getHorizontalPodAutoscalerPatchObject({ cpu, type }: NonNullable<StrategyQueryResponse["result"]>) {
+    console.log(cpu, type);
     return [
       {
         type: "Resource",
@@ -282,16 +283,19 @@ export class ServiceHorizontalPodAutoscalerController {
             message: [`Delete HPA`].join("\n"),
             ...baseMetadata,
           };
-        } else if (patchConfig.responseTime != this.responseTime) {
-          await this.changeResponseTime(patchConfig.responseTime);
-          return {
-            success: true,
-            message: [`Change ResponseTime to ${patchConfig.responseTime}`].join("\n"),
-            ...baseMetadata,
-          };
         }
+
+        // 策略服务如果考虑外部状态，则相同的响应时间要求可能返回不同的阈值结果
+        // if (patchConfig.responseTime != this.responseTime)
+        await this.changeResponseTime(patchConfig.responseTime);
+        return {
+          success: true,
+          message: [`Change ResponseTime to ${patchConfig.responseTime}`].join("\n"),
+          ...baseMetadata,
+        };
       }
 
+      // 暂时不会执行到这里?
       return {
         success: true,
         message: [`HPA is up-to-date`].join("\n"),
