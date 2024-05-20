@@ -13,7 +13,7 @@ export const DashboardRouter: Route[] = [
     url: "/dashboard/graph",
   },
   {
-    name: "响应时间配置",
+    name: "服务配置",
     icon: <RiTimerLine />,
     url: "/dashboard/controller",
   },

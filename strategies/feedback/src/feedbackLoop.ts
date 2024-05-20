@@ -3,20 +3,17 @@ import { setTimeout } from "node:timers/promises";
 import { prometheus } from "./clients/prometheus.js";
 import { famController } from "./clients/controller.js";
 
-const [kp, ki, kd, pf, t, InitialValue] = [1, 1, 1, 0.5, 60 * 5, 50];
+const T = Number(process.env["INTERVAL"]);
+const [kp, ki, kd, pf, t, InitialValue] = [1, 1, 1, 0.5, 60 * T, 50];
 
 const PQL = (ns: string, svc: string) =>
-    `
-avg(
-    rate(
-        istio_request_duration_milliseconds_sum{destination_service_namespace="${ns}",destination_service_name="${svc}",reporter="source",response_flags="-"}[1m]
-    )
-    /
-    rate(
-        istio_request_duration_milliseconds_count{destination_service_namespace="${ns}",destination_service_name="${svc}",reporter="source",response_flags="-"}[1m]
-    )
+    `rate(
+    istio_request_duration_milliseconds_sum{destination_service_namespace="${ns}",destination_service_name="${svc}",reporter="source",response_flags="-"}[1m]
 )
-`;
+/
+rate(
+    istio_request_duration_milliseconds_count{destination_service_namespace="${ns}",destination_service_name="${svc}",reporter="source",response_flags="-"}[1m]
+)`;
 
 interface FeedbackLoopController {
     loops: FeedbackLoop[];

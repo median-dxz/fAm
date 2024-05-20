@@ -5,3 +5,4 @@ metadata:
 data:
     PROMETHEUS_URL: "http://prometheus.istio-system:9090"
     FAM_CONTROLLER_URL: "http://fam-service.fam-ns:3000"
+    INTERVAL: "3"

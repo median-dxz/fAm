@@ -1,6 +1,11 @@
 import { kube } from "@/server/client/kubernetes";
 import type { StrategyQueryRequset, StrategyQueryResponse } from "@fam/strategy-service-type";
-import { HttpError, V2HorizontalPodAutoscaler, V2MetricSpec, type V1ServiceSpec } from "@kubernetes/client-node";
+import {
+  HttpError,
+  V2HorizontalPodAutoscaler,
+  V2HorizontalPodAutoscalerSpec,
+  type V1ServiceSpec,
+} from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
 import { strategyService } from "../client/strategy";
 import type { HpaPatchRequest, HpaState, ServiceQuery, WorkloadRef, WorkloadStatus } from "./type";
@@ -88,7 +93,7 @@ export class ServiceHorizontalPodAutoscalerController {
   workloads?: WorkloadRef[];
   horizontalPodAutoscalers?: V2HorizontalPodAutoscaler[];
 
-  get hpaStatus(): HpaState {
+  get hpaState(): HpaState {
     if (!this.workloads || this.workloads.length === 0) {
       return "workload-not-found";
     }
@@ -112,7 +117,7 @@ export class ServiceHorizontalPodAutoscalerController {
   }
 
   get workloadStatus(): WorkloadStatus | undefined {
-    if (this.hpaStatus !== "configured") {
+    if (this.hpaState !== "configured") {
       return undefined;
     }
     const { status, spec } = this.horizontalPodAutoscalers![0];
@@ -141,7 +146,7 @@ export class ServiceHorizontalPodAutoscalerController {
   }
 
   get responseTime(): number | undefined {
-    if (this.hpaStatus !== "configured") {
+    if (this.hpaState !== "configured") {
       return undefined;
     }
     const { metadata } = this.horizontalPodAutoscalers![0];
@@ -154,11 +159,11 @@ export class ServiceHorizontalPodAutoscalerController {
 
   async getCPUResourceFromStrategyService(responseTime: number, hpaName?: string) {
     if (
-      this.hpaStatus === "workload-not-found" ||
-      this.hpaStatus === "workload-not-supported" ||
-      this.hpaStatus === "multiple-workload"
+      this.hpaState === "workload-not-found" ||
+      this.hpaState === "workload-not-supported" ||
+      this.hpaState === "multiple-workload"
     ) {
-      throw new Error(`Cannot query CPU Resource: ${this.hpaStatus}`);
+      throw new Error(`Cannot query CPU Resource: ${this.hpaState}`);
     }
     const { success, result, error } = await strategyService.query({
       responseTime,
@@ -185,19 +190,26 @@ export class ServiceHorizontalPodAutoscalerController {
 
   static getHorizontalPodAutoscalerPatchObject({ cpu, type }: NonNullable<StrategyQueryResponse["result"]>) {
     console.log(cpu, type);
-    return [
-      {
-        type: "Resource",
-        resource: {
-          name: "cpu",
-          target: {
-            type,
-            averageValue: type === "AverageValue" ? cpu + "m" : undefined,
-            averageUtilization: type === "Utilization" ? cpu : undefined,
+    return {
+      metrics: [
+        {
+          type: "Resource",
+          resource: {
+            name: "cpu",
+            target: {
+              type,
+              averageValue: type === "AverageValue" ? cpu + "m" : undefined,
+              averageUtilization: type === "Utilization" ? cpu : undefined,
+            },
           },
         },
+      ],
+      behavior: {
+        scaleDown: {
+          stabilizationWindowSeconds: 0,
+        },
       },
-    ] satisfies V2MetricSpec[];
+    } satisfies Pick<V2HorizontalPodAutoscalerSpec, "metrics" | "behavior">;
   }
 
   static async fromServiceQueries(queries?: ServiceQuery[]) {
@@ -247,26 +259,26 @@ export class ServiceHorizontalPodAutoscalerController {
       serviceNamespace: this.serviceNamespace,
     };
 
-    if (!["configured", "not-created", "not-managed"].includes(this.hpaStatus)) {
+    if (!["configured", "not-created", "not-managed"].includes(this.hpaState)) {
       return {
         success: false,
-        message: [`Cannot patch HPA: ${this.hpaStatus}`, `wrong HPA state: ${this.hpaStatus}`].join("\n"),
+        message: [`Cannot patch HPA: ${this.hpaState}`, `wrong HPA state: ${this.hpaState}`].join("\n"),
         ...baseMetadata,
       };
     }
 
-    if (this.hpaStatus === "not-managed") {
+    if (this.hpaState === "not-managed") {
       return {
         success: false,
         message: [
-          `Cannot patch HPA: ${this.hpaStatus}`,
+          `Cannot patch HPA: ${this.hpaState}`,
           `HPA is not managed by fam-autoscaler-controller, current version of app does not support this situation temporarily`,
         ].join("\n"),
         ...baseMetadata,
       };
     }
     try {
-      if (this.hpaStatus === "not-created" && patchConfig.responseTime != undefined) {
+      if (this.hpaState === "not-created" && patchConfig.responseTime != undefined) {
         await this.createHpa(patchConfig.responseTime);
         return {
           success: true,
@@ -275,7 +287,7 @@ export class ServiceHorizontalPodAutoscalerController {
         };
       }
 
-      if (this.hpaStatus === "configured") {
+      if (this.hpaState === "configured") {
         if (patchConfig.responseTime == undefined) {
           await this.deleteHpa();
           return {
@@ -330,7 +342,7 @@ export class ServiceHorizontalPodAutoscalerController {
           },
         },
         spec: {
-          metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
+          ...ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
         },
       },
       undefined,
@@ -369,7 +381,7 @@ export class ServiceHorizontalPodAutoscalerController {
         },
         minReplicas: 1,
         maxReplicas: 10,
-        metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
+        ...ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(cpu),
       },
     });
   }

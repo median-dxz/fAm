@@ -107,27 +107,27 @@ export const graphRouter = router({
 
       const requestMetrics = queryRangeResponse.data.result;
 
-      for (const metric of requestMetrics) {
-        if (metric.values.length === 2 && Number(metric.values[0][1]) === Number(metric.values[1][1])) {
+      for (const { metric, values } of requestMetrics) {
+        if (values.length === 2 && Number(values[0][1]) === Number(values[1][1])) {
           continue;
         }
 
         const source = graph.nodes.find(
           (n) =>
-            n.name === metric.metric.source_workload &&
-            n.namespace === metric.metric.source_workload_namespace &&
+            n.name === metric.source_workload &&
+            n.namespace === metric.source_workload_namespace &&
             n.type === NodeType.Workload,
         );
         const service = graph.nodes.find(
           (n) =>
-            n.name === metric.metric.destination_service_name &&
-            n.namespace === metric.metric.destination_service_namespace &&
+            n.name === metric.destination_service_name &&
+            n.namespace === metric.destination_service_namespace &&
             n.type === NodeType.Service,
         );
         const target = graph.nodes.find(
           (n) =>
-            n.name === metric.metric.destination_workload &&
-            n.namespace === metric.metric.destination_workload_namespace &&
+            n.name === metric.destination_workload &&
+            n.namespace === metric.destination_workload_namespace &&
             n.type === NodeType.Workload,
         );
 
@@ -142,9 +142,9 @@ export const graphRouter = router({
         });
 
         if (edge) {
-          edge.code.push(metric.metric.response_code);
+          edge.code.push(metric.response_code);
         } else {
-          source.edges.push({ source: source.hash, target: service.hash, code: [metric.metric.response_code] });
+          source.edges.push({ source: source.hash, target: service.hash, code: [metric.response_code] });
         }
 
         edge = service.edges.find((e) => {
@@ -152,9 +152,9 @@ export const graphRouter = router({
         });
 
         if (edge) {
-          edge.code.push(metric.metric.response_code);
+          edge.code.push(metric.response_code);
         } else {
-          service.edges.push({ source: service.hash, target: target.hash, code: [metric.metric.response_code] });
+          service.edges.push({ source: service.hash, target: target.hash, code: [metric.response_code] });
         }
       }
 

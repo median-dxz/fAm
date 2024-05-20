@@ -11,7 +11,7 @@ export const serviceConfigRouter = router({
         serviceName: result.serviceName,
         serviceNamespace: result.serviceNamespace,
         responseTime: result.responseTime,
-        hpaState: result.hpaStatus,
+        hpaState: result.hpaState,
         workload: result.workloads?.[0],
         workloadStatus: result.workloadStatus,
       } satisfies ServiceConfigQueryResult;

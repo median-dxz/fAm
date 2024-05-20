@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       service.namespace,
       {
         spec: {
-          metrics: ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(result!),
+          ...ServiceHorizontalPodAutoscalerController.getHorizontalPodAutoscalerPatchObject(result!),
         },
       },
       undefined,
