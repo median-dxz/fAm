@@ -19,7 +19,8 @@ export const prometheus = {
         // console.log(`[Prometheus Client]: query: ${this.url}/api/v1/query?${searchParams.toString()}`);
         return fetch(`${this.url}/api/v1/query?${searchParams.toString()}`, fetchOptions)
             .then((r) => r.json() as Promise<PrometheusQueryResponse<TResultType, TMetric>>)
-            .catch(() => {
+            .catch((e) => {
+                console.error(e);
                 throw new Error("Failed to fetch prometheus data");
             });
     },
@@ -39,7 +40,8 @@ export const prometheus = {
         console.log(`[Prometheus Client]: query range: ${this.url}/api/v1/query_range?${searchParams.toString()}`);
         return fetch(`${this.url}/api/v1/query_range?${searchParams.toString()}`)
             .then((r) => r.json() as Promise<PrometheusQueryResponse<"matrix", TMetric>>)
-            .catch(() => {
+            .catch((e) => {
+                console.error(e);
                 throw new Error("Failed to fetch prometheus data");
             });
     },

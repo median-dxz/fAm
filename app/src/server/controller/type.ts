@@ -6,7 +6,7 @@ export interface ServiceQuery {
 }
 
 export interface WorkloadStatus {
-  //   currentResponseTime: number; // TODO implment this
+  currentResponseTime: number;
   currentReplicas?: number;
   targetReplicas?: number;
   currentUtilizationPercentage?: number;

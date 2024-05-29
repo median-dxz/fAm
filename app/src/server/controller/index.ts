@@ -7,6 +7,7 @@ import {
   type V1ServiceSpec,
 } from "@kubernetes/client-node";
 import stringify from "json-stable-stringify";
+import { prometheus } from "../client/prometheus";
 import { strategyService } from "../client/strategy";
 import type { HpaPatchRequest, HpaState, ServiceQuery, WorkloadRef, WorkloadStatus } from "./type";
 
@@ -116,7 +117,7 @@ export class ServiceHorizontalPodAutoscalerController {
     return "configured";
   }
 
-  get workloadStatus(): WorkloadStatus | undefined {
+  async workloadStatus(): Promise<WorkloadStatus | undefined> {
     if (this.hpaState !== "configured") {
       return undefined;
     }
@@ -126,7 +127,20 @@ export class ServiceHorizontalPodAutoscalerController {
     }
     const { currentMetrics, currentReplicas, desiredReplicas, conditions } = status;
     const { metrics } = spec;
+
+    const currentResponseTimeQuery = await prometheus.query<object, "vector">({
+      query: `
+rate(
+    istio_request_duration_milliseconds_sum{destination_service_namespace="${this.serviceNamespace}",destination_service_name="${this.serviceName}",reporter="source",response_flags="-",response_code="200"}[1m]
+)
+/
+rate(
+    istio_request_duration_milliseconds_count{destination_service_namespace="${this.serviceNamespace}",destination_service_name="${this.serviceName}",reporter="source",response_flags="-",response_code="200"}[1m]
+)`,
+    });
+
     return {
+      currentResponseTime: Math.round(Number(currentResponseTimeQuery.data.result[0].value[1])) ?? NaN,
       currentReplicas,
       targetReplicas: desiredReplicas,
       currentUtilizationPercentage: currentMetrics?.[0].resource?.current.averageUtilization,

@@ -16,7 +16,7 @@ interface ResourceData {
   timestamp: string;
   current: number;
   target: number;
-  parameter: "%" | "" | "m";
+  parameter: "%" | "" | "m" | "ms";
 }
 
 const currentText = (data?: ResourceData) =>
@@ -25,6 +25,7 @@ const currentText = (data?: ResourceData) =>
 export function ConfigCard({ config, onChange }: ConfigCardProps) {
   const [replicasData, setReplicasData] = useState<ResourceData[]>([]);
   const [cpuData, setCpuData] = useState<ResourceData[]>([]);
+  const [rtData, setRtData] = useState<ResourceData[]>([]);
   const [responseTime, setResponseTime] = useState<number | undefined>();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -88,7 +89,19 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
         }
       }),
     );
-  }, [config.hpaState, config.workloadStatus, resourceType]);
+
+    setRtData(
+      produce((draft) => {
+        if (draft.length > 20) draft.splice(0, Math.max(0, draft.length - 20));
+        draft.push({
+          current: config.workloadStatus?.currentResponseTime ?? NaN,
+          target: config.responseTime ?? NaN,
+          timestamp: dayjs().format("HH:mm:ss"),
+          parameter: "ms",
+        });
+      }),
+    );
+  }, [config.hpaState, config.workloadStatus, config.responseTime, resourceType]);
 
   useEffect(() => {
     addResouceData();
@@ -153,12 +166,42 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
         }}
         unmount
       >
-        <DialogPanel className="space-y-8">
-          <div className="relative">
+        <DialogPanel className="max-w-[75%] gap-4 grid grid-cols-2">
+          <div className="relative h-36">
+            <h2 className="text-lg font-semibold text-tremor-content-strong">Service Infomation</h2>
+            <List>
+              <ListItem>
+                <span>Service Namespace</span>
+                <span>{config.serviceNamespace}</span>
+              </ListItem>
+              <ListItem>
+                <span>Service Name</span>
+                <span>{config.serviceName}</span>
+              </ListItem>
+              <ListItem>
+                <span>HPA State</span>
+                <span>{config.hpaState}</span>
+              </ListItem>
+            </List>
+          </div>
+          <div className="row-span-3 relative">
             <h2 className="text-lg font-semibold text-tremor-content-strong">Workload Status</h2>
-            <div className="flex flex-row space-x-8">
+            <div className="flex flex-col space-y-2">
               {config.hpaState === "configured" ? (
                 <>
+                  <div className="relative">
+                    <h3 className="text-base font-semibold text-tremor-content-strong">Response Time</h3>
+                    <AreaChart
+                      data={rtData}
+                      valueFormatter={(value) => {
+                        return `${value}ms`;
+                      }}
+                      index="timestamp"
+                      categories={["current", "target"]}
+                      colors={["blue", "cyan"]}
+                      className="h-36"
+                    />
+                  </div>
                   <div className="relative">
                     <h3 className="text-base font-semibold text-tremor-content-strong">Replicas</h3>
                     <AreaChart
@@ -166,9 +209,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                       index="timestamp"
                       categories={["current", "target"]}
                       colors={["blue", "cyan"]}
-                      className="h-36 w-56"
-                      showLegend={false}
-                      showTooltip={false}
+                      className="h-36"
                     />
                   </div>
                   <div className="relative">
@@ -185,8 +226,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
                       index="timestamp"
                       categories={["current", "target"]}
                       colors={["blue", "cyan"]}
-                      className="h-36 w-56"
-                      showLegend={false}
+                      className="h-36"
                     />
                   </div>
                 </>
@@ -251,7 +291,7 @@ export function ConfigCard({ config, onChange }: ConfigCardProps) {
               </Button>
             </div>
           </div>
-          <div className="flex flex-row justify-between">
+          <div className="col-span-2 flex flex-row justify-between">
             <Button className="w-full" onClick={async () => setIsOpen(false)}>
               关闭
             </Button>
