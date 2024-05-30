@@ -43,7 +43,7 @@ async function predict(namespace: string, workload: string, response: number) {
         stack_1: { data: resultBuffer },
     } = results;
 
-    const result = Math.round((1 + LimitRate) * Number(resultBuffer[0]));
+    const result = Math.round((1 - LimitRate) * Number(resultBuffer[0]));
     console.log(`result: ${result}`);
     return result;
 }
